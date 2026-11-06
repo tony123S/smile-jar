@@ -32,7 +32,7 @@ The SDK integration is in [`renderer.js`](renderer.js) (`buildSdk`, `wireSdk`, `
 
 ## Setup
 
-**You need:** Node.js 22.12+ (24 LTS recommended), a webcam, and a free SmartSpectra API key from <https://physiology.presagetech.com/>.
+**You need:** Node.js 22.12 or newer (24 LTS recommended; older 22.x versions fail to install Electron with `ERR_REQUIRE_ESM`), a webcam, and a free SmartSpectra API key from <https://physiology.presagetech.com/>.
 
 ```bash
 git clone https://github.com/tony123S/smile-jar.git

@@ -42,21 +42,33 @@
         "NSCameraUsageDescription": "Smile Jar uses the camera, only while a Smile Session is running, to count smiles on this device. Nothing is recorded."
       },
       "extraResources": [
-        { "from": "node_modules/@smartspectra/node-sdk-darwin-${arch}/", "to": "smartspectra" }
+        {
+          "from": "node_modules/@smartspectra/node-sdk-darwin-${arch}/",
+          "to": "smartspectra"
+        }
       ]
     },
     "win": {
       "target": "nsis",
       "extraResources": [
-        { "from": "node_modules/@smartspectra/node-sdk-win32-${arch}/", "to": "smartspectra" }
+        {
+          "from": "node_modules/@smartspectra/node-sdk-win32-${arch}/",
+          "to": "smartspectra"
+        }
       ]
     },
     "linux": {
       "target": "AppImage",
       "extraResources": [
-        { "from": "node_modules/@smartspectra/node-sdk-linux-${arch}/", "to": "smartspectra" }
+        {
+          "from": "node_modules/@smartspectra/node-sdk-linux-${arch}/",
+          "to": "smartspectra"
+        }
       ]
     },
     "asar": true
+  },
+  "engines": {
+    "node": ">=22.12"
   }
 }
