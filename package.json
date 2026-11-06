@@ -1,0 +1,62 @@
+{
+  "name": "smile-jar",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Smile Jar: sponsors pledge per smile, the SmartSpectra SDK's live expression signal counts your smiles into a charity jar.",
+  "main": "main.js",
+  "license": "MIT",
+  "scripts": {
+    "build": "node build.mjs",
+    "start": "npm run build && electron .",
+    "simulate": "node build.mjs --simulate && electron .",
+    "preview:browser": "node build.mjs --simulate",
+    "test": "node --test test/*.test.mjs",
+    "dist:mac": "npm run build && electron-builder --mac --arm64",
+    "dist:win": "npm run build && electron-builder --win --x64",
+    "dist:linux": "npm run build && electron-builder --linux --x64"
+  },
+  "dependencies": {
+    "@smartspectra/node-sdk": "^3.4.0"
+  },
+  "devDependencies": {
+    "electron": "43.2.0",
+    "electron-builder": "^26.6.0",
+    "esbuild": "^0.25.0"
+  },
+  "build": {
+    "appId": "dev.smilejar.app",
+    "productName": "Smile Jar",
+    "files": [
+      "main.js",
+      "index.html",
+      "styles.css",
+      "dist/**",
+      "node_modules/**",
+      "!node_modules/@smartspectra/node-sdk-*/**"
+    ],
+    "mac": {
+      "hardenedRuntime": true,
+      "entitlements": "build/entitlements.mac.plist",
+      "entitlementsInherit": "build/entitlements.mac.plist",
+      "extendInfo": {
+        "NSCameraUsageDescription": "Smile Jar uses the camera, only while a Smile Session is running, to count smiles on this device. Nothing is recorded."
+      },
+      "extraResources": [
+        { "from": "node_modules/@smartspectra/node-sdk-darwin-${arch}/", "to": "smartspectra" }
+      ]
+    },
+    "win": {
+      "target": "nsis",
+      "extraResources": [
+        { "from": "node_modules/@smartspectra/node-sdk-win32-${arch}/", "to": "smartspectra" }
+      ]
+    },
+    "linux": {
+      "target": "AppImage",
+      "extraResources": [
+        { "from": "node_modules/@smartspectra/node-sdk-linux-${arch}/", "to": "smartspectra" }
+      ]
+    },
+    "asar": true
+  }
+}

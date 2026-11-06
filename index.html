@@ -1,0 +1,198 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta http-equiv="Content-Security-Policy"
+        content="default-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data:; worker-src 'self' blob:; media-src 'self' blob:; connect-src 'self' blob:; frame-src 'none'; object-src 'none';">
+  <title>Smile Jar</title>
+  <link rel="stylesheet" href="./styles.css">
+</head>
+<body>
+  <div id="sim-banner" class="sim-banner" hidden>
+    SIMULATED SIGNAL: the SmartSpectra SDK is not running in this build. Hold Space to smile.
+  </div>
+
+  <header class="topbar">
+    <div class="brand">
+      <svg class="brand-mark" viewBox="0 0 32 32" aria-hidden="true"><rect x="7" y="4" width="18" height="4" rx="1.5"/><path d="M8 9h16v15a5 5 0 0 1-5 5h-6a5 5 0 0 1-5-5z"/><path class="smile" d="M12 19c1.2 2 6.8 2 8 0" fill="none"/></svg>
+      <span>Smile Jar</span>
+    </div>
+    <nav class="topnav">
+      <button type="button" class="link" id="nav-privacy">Privacy &amp; data</button>
+    </nav>
+  </header>
+
+  <!-- 1. Consent ------------------------------------------------------------ -->
+  <main id="view-consent" class="view consent" hidden>
+    <section class="card consent-card">
+      <h1>Before we open the jar</h1>
+      <p class="lede">Smile Jar turns your smiles into pledges for a cause. To count smiles it needs your camera, so here is exactly what happens.</p>
+      <ul class="facts">
+        <li><strong>The camera is only on during a Smile Session.</strong> It starts when you press Start and turns off when the session ends. Your system camera light will show it.</li>
+        <li><strong>Nothing is recorded.</strong> Video frames are analysed live by the Presage SmartSpectra SDK on this computer and then discarded. No video, photos, face data or expression scores are saved or sent anywhere.</li>
+        <li><strong>Only totals are saved, on this device.</strong> For each session we keep the date, length and number of smiles, so the jar can add up pledges. You can export or delete this any time.</li>
+        <li><strong>The SDK contacts Presage to check the API key</strong> and, only if you allow it below, to send an anonymous diagnostics summary (no video, no measurements, no identifiers).</li>
+        <li><strong>It is a game, not a health tool.</strong> Smile Jar makes no medical or emotional assessment of anyone.</li>
+        <li><strong>Only count your own smiles</strong>, or those of people who have agreed to take part and are in front of the camera knowingly.</li>
+      </ul>
+      <label class="check">
+        <input type="checkbox" id="consent-telemetry">
+        <span>Share anonymous SDK diagnostics with Presage to help improve the SDK (optional, off by default)</span>
+      </label>
+      <label class="check">
+        <input type="checkbox" id="consent-agree">
+        <span>I understand how Smile Jar uses the camera and I agree to use it only with people who have consented.</span>
+      </label>
+      <div class="actions">
+        <button type="button" class="primary" id="consent-accept" disabled>Open the jar</button>
+      </div>
+    </section>
+  </main>
+
+  <!-- 2. Home -------------------------------------------------------------- -->
+  <main id="view-home" class="view home" hidden>
+    <section class="card jar-card">
+      <div class="jar-wrap" id="home-jar"></div>
+      <div class="jar-stats">
+        <div class="eyebrow">Raising for</div>
+        <div class="cause" id="home-cause">Cause</div>
+        <div class="big-money" id="home-total">$0.00</div>
+        <div class="muted"><span id="home-smiles">0</span> smiles so far &middot; goal <span id="home-goal">$25.00</span></div>
+        <div class="progress"><div class="progress-fill" id="home-progress"></div></div>
+        <div class="muted small" id="home-rate"></div>
+        <button type="button" class="primary big" id="btn-new-session">Start a Smile Session</button>
+      </div>
+    </section>
+
+    <section class="card">
+      <h2>Campaign</h2>
+      <div class="grid2">
+        <label class="field">
+          <span>Cause</span>
+          <input id="f-cause" list="cause-presets" maxlength="80">
+          <datalist id="cause-presets">
+            <option value="Local food bank"><option value="Animal shelter"><option value="Children's hospital">
+            <option value="Clean water project"><option value="School library"><option value="Mental health charity">
+          </datalist>
+        </label>
+        <label class="field">
+          <span>Goal ($)</span>
+          <input id="f-goal" type="number" min="1" step="1">
+        </label>
+        <label class="field">
+          <span>Session length (minutes)</span>
+          <input id="f-minutes" type="number" min="1" max="15" step="1">
+        </label>
+        <label class="check inline">
+          <input type="checkbox" id="f-pulse">
+          <span>Also show live pulse during sessions (needs a cardio-enabled API key; just for fun)</span>
+        </label>
+      </div>
+
+      <h3>Sponsors</h3>
+      <p class="muted small">Friends, family or coworkers who promise to donate for each smile. Smile Jar never takes payment: it gives you a pledge statement to send them.</p>
+      <table class="sponsors">
+        <thead><tr><th>Name</th><th>Cents per smile</th><th>Cap ($, optional)</th><th>Owes now</th><th></th></tr></thead>
+        <tbody id="sponsor-rows"></tbody>
+      </table>
+      <div class="actions left">
+        <button type="button" id="btn-add-sponsor">Add sponsor</button>
+        <button type="button" id="btn-export">Export pledge statement (CSV)</button>
+      </div>
+    </section>
+
+    <section class="card">
+      <h2>Sessions</h2>
+      <ol class="history" id="history"></ol>
+      <p class="muted small" id="history-empty">No sessions yet. Your first one is a press away.</p>
+    </section>
+  </main>
+
+  <!-- 3. Session ----------------------------------------------------------- -->
+  <main id="view-session" class="view session" hidden>
+    <section class="stage">
+      <div class="reel card" id="reel">
+        <div class="reel-kind" id="reel-kind">Joke</div>
+        <div class="reel-text" id="reel-text">Loading something nice...</div>
+        <video id="clip" class="clip" controls hidden></video>
+        <div class="reel-actions">
+          <button type="button" id="btn-next-card">Next</button>
+          <label class="file-btn">
+            <input type="file" id="clip-file" accept="video/*">
+            <span>Play my own clip</span>
+          </label>
+        </div>
+      </div>
+
+      <aside class="side">
+        <div class="cam card">
+          <video id="preview" autoplay playsinline muted></video>
+          <div class="cam-placeholder" id="cam-placeholder">Camera off</div>
+          <div class="cam-live" id="cam-live" hidden><span class="dot"></span> Camera on, nothing recorded</div>
+          <div class="hint" id="hint">Starting the SDK...</div>
+        </div>
+
+        <div class="card meter-card">
+          <div class="meter-label">
+            <span>Live smile signal <em>(SmartSpectra expressions, HAPPY)</em></span>
+            <span id="meter-value">0%</span>
+          </div>
+          <div class="meter"><div class="meter-fill" id="meter-fill"></div><div class="meter-mark" id="meter-mark"></div></div>
+          <div class="pulse" id="pulse-row" hidden>Live pulse <strong id="pulse-value">--</strong> BPM <em>(for fun only)</em></div>
+        </div>
+
+        <div class="card session-jar">
+          <div class="jar-wrap small" id="session-jar"></div>
+          <div>
+            <div class="big-count"><span id="s-smiles">0</span> <small>smiles</small></div>
+            <div class="money" id="s-money">$0.00 pledged</div>
+            <div class="muted small" id="s-timer">2:00 left</div>
+          </div>
+        </div>
+
+        <div class="error" id="error" hidden></div>
+        <div class="actions">
+          <button type="button" class="primary" id="btn-end">End session</button>
+        </div>
+      </aside>
+    </section>
+  </main>
+
+  <!-- 4. Summary ----------------------------------------------------------- -->
+  <main id="view-summary" class="view summary" hidden>
+    <section class="card summary-card">
+      <div class="jar-wrap" id="summary-jar"></div>
+      <h1><span id="sum-smiles">0</span> smiles, <span id="sum-money">$0.00</span> for <span id="sum-cause">a good cause</span></h1>
+      <p class="muted" id="sum-detail"></p>
+      <p class="muted small">Camera is off. Only this session's date, length and smile count were saved on this device.</p>
+      <div class="actions">
+        <button type="button" id="btn-discard">Don't save this session</button>
+        <button type="button" class="primary" id="btn-done">Back to the jar</button>
+      </div>
+    </section>
+  </main>
+
+  <!-- Privacy dialog ------------------------------------------------------- -->
+  <dialog id="privacy" class="privacy">
+    <h2>Privacy &amp; data</h2>
+    <p><strong>Camera:</strong> used only while a Smile Session runs. Frames go from the camera to the SmartSpectra SDK in this app and are discarded after analysis. Nothing is recorded or uploaded.</p>
+    <p><strong>Saved on this device:</strong> your consent date, settings, cause, sponsor names and rates, and per-session totals (date, length, smile count, pledged amount). Nothing else.</p>
+    <p><strong>Network:</strong> the SDK contacts Presage to validate the API key. Anonymous SDK diagnostics are <span id="pv-telemetry">off</span>. Smile Jar itself has no server, analytics or AI service.</p>
+    <p><strong>Retention:</strong> kept until you delete it. Deleting removes all of it and returns you to the consent screen.</p>
+    <label class="check">
+      <input type="checkbox" id="pv-telemetry-toggle">
+      <span>Share anonymous SDK diagnostics with Presage</span>
+    </label>
+    <div class="actions">
+      <button type="button" class="danger" id="btn-wipe">Delete all my data</button>
+      <button type="button" class="primary" id="btn-close-privacy">Close</button>
+    </div>
+  </dialog>
+
+  <div id="coin-layer" class="coin-layer" aria-hidden="true"></div>
+  <div id="toast" class="toast" role="status" hidden></div>
+
+  <script src="./dist/renderer.bundle.js"></script>
+</body>
+</html>
