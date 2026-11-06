@@ -28,7 +28,7 @@ No login, no payments, no server.
 
 ## Code
 
-{% github YOUR_GITHUB_USERNAME/smile-jar %}
+{% github tony123S/smile-jar %}
 
 Setup takes three steps: `npm install`, add your SmartSpectra API key to `.env`, then `npm start`. The README has full setup instructions and a step-by-step testing guide for judges. No login is needed.
 

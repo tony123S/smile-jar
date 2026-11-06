@@ -35,7 +35,7 @@ The SDK integration is in [`renderer.js`](renderer.js) (`buildSdk`, `wireSdk`, `
 **You need:** Node.js 22.12+ (24 LTS recommended), a webcam, and a free SmartSpectra API key from <https://physiology.presagetech.com/>.
 
 ```bash
-git clone <this repo>
+git clone https://github.com/tony123S/smile-jar.git
 cd smile-jar
 npm install                 # pulls @smartspectra/node-sdk and its native runtime (a few hundred MB, all platforms)
 cp .env.example .env        # then paste your key: SMARTSPECTRA_API_KEY=...
