@@ -76,3 +76,11 @@ test('pushExpressions counts from a decoded metrics slice', () => {
   for (let i = 0; i < 20; i++) slice.push({ stable: true, timestamp: i * 100_000, scores: [{ type: 5, confidence: 92 }] });
   assert.equal(d.pushExpressions(slice), 1);
 });
+
+test('mascotFace grins on HAPPY, jaw-drops on SURPRISE, else flat', async () => {
+  const { mascotFace } = await import('../src/smile-detector.js');
+  assert.equal(mascotFace({ scores: [{ type: 5, confidence: 80 }] }), 'grin');
+  assert.equal(mascotFace({ scores: [{ type: 8, confidence: 70 }, { type: 5, confidence: 10 }] }), 'wow');
+  assert.equal(mascotFace({ scores: [{ type: 6, confidence: 90 }] }), 'flat');
+  assert.equal(mascotFace(undefined), 'flat');
+});

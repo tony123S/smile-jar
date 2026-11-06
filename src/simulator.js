@@ -11,11 +11,16 @@ export class SimulatedSDK {
     this.requestPulse = requestPulse;
     this.timer = null;
     this.happy = 5;
+    this.surprise = 3;
     this.smiling = false;
+    this.bigGrin = false;
+    this.surprised = false;
     this.onKey = (e) => {
-      if (e.code !== 'Space' || e.target?.tagName === 'INPUT') return;
-      e.preventDefault();
-      this.smiling = e.type === 'keydown';
+      if (e.target?.tagName === 'INPUT') return;
+      const down = e.type === 'keydown';
+      if (e.code === 'Space') { e.preventDefault(); this.smiling = down; }
+      if (e.code === 'KeyG') this.bigGrin = down;   // hold G for a golden grin
+      if (e.code === 'KeyW') this.surprised = down; // hold W for a jaw-drop
     };
   }
 
@@ -32,8 +37,9 @@ export class SimulatedSDK {
   }
 
   tick() {
-    const target = this.smiling ? 88 : 6;
+    const target = this.bigGrin ? 98 : this.smiling ? 88 : 6;
     this.happy += (target - this.happy) * 0.35;
+    this.surprise += ((this.surprised ? 85 : 3) - this.surprise) * 0.35;
     const now = Date.now() * 1000;
     const rest = Math.max(0, 100 - this.happy);
     const metrics = {
@@ -43,8 +49,8 @@ export class SimulatedSDK {
           timestamp: now,
           scores: [
             { type: ExpressionType.HAPPY, confidence: this.happy },
-            { type: ExpressionType.NEUTRAL, confidence: rest * 0.9 },
-            { type: ExpressionType.SURPRISE, confidence: rest * 0.1 },
+            { type: ExpressionType.NEUTRAL, confidence: Math.max(0, rest - this.surprise) },
+            { type: ExpressionType.SURPRISE, confidence: this.surprise },
           ],
         }],
       },

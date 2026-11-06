@@ -10,7 +10,7 @@
 </head>
 <body>
   <div id="sim-banner" class="sim-banner" hidden>
-    SIMULATED SIGNAL: the SmartSpectra SDK is not running in this build. Hold Space to smile.
+    SIMULATED SIGNAL: the SmartSpectra SDK is not running in this build. Hold Space to smile, G for a big grin, W for surprise.
   </div>
 
   <header class="topbar">
@@ -61,7 +61,11 @@
         <div class="muted"><span id="home-smiles">0</span> smiles so far &middot; goal <span id="home-goal">$25.00</span></div>
         <div class="progress"><div class="progress-fill" id="home-progress"></div></div>
         <div class="muted small" id="home-rate"></div>
-        <button type="button" class="primary big" id="btn-new-session">Start a Smile Session</button>
+        <div class="start-row">
+          <button type="button" class="primary big" id="btn-new-session">Start a Smile Session</button>
+          <button type="button" class="big ghost" id="btn-poker-session">Try Not to Smile</button>
+        </div>
+        <div class="muted small">Try Not to Smile: keep a straight face while the jokes roll. Every time you crack, your sponsors pay.</div>
       </div>
     </section>
 
@@ -113,6 +117,7 @@
   <main id="view-session" class="view session" hidden>
     <section class="stage">
       <div class="reel card" id="reel">
+        <div class="mode-head"><strong id="s-mode">Smile Session</strong> <span class="muted small" id="s-mode-help"></span></div>
         <div class="reel-kind" id="reel-kind">Joke</div>
         <div class="reel-text" id="reel-text">Loading something nice...</div>
         <video id="clip" class="clip" controls hidden></video>
@@ -145,10 +150,12 @@
         <div class="card session-jar">
           <div class="jar-wrap small" id="session-jar"></div>
           <div>
-            <div class="big-count"><span id="s-smiles">0</span> <small>smiles</small></div>
+            <div class="big-count"><span id="s-smiles">0</span> <small id="s-unit">smiles</small></div>
             <div class="money" id="s-money">$0.00 pledged</div>
             <div class="muted small" id="s-timer">2:00 left</div>
+            <div class="small streak" id="s-streak" hidden></div>
           </div>
+          <div class="badge" id="s-badge" hidden></div>
         </div>
 
         <div class="error" id="error" hidden></div>
@@ -163,8 +170,9 @@
   <main id="view-summary" class="view summary" hidden>
     <section class="card summary-card">
       <div class="jar-wrap" id="summary-jar"></div>
-      <h1><span id="sum-smiles">0</span> smiles, <span id="sum-money">$0.00</span> for <span id="sum-cause">a good cause</span></h1>
+      <h1><span id="sum-smiles">0</span> <span id="sum-unit">smiles</span>, <span id="sum-money">$0.00</span> for <span id="sum-cause">a good cause</span></h1>
       <p class="muted" id="sum-detail"></p>
+      <p class="extras" id="sum-extras"></p>
       <p class="muted small">Camera is off. Only this session's date, length and smile count were saved on this device.</p>
       <div class="actions">
         <button type="button" id="btn-discard">Don't save this session</button>

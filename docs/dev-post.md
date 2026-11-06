@@ -13,6 +13,11 @@ cover_image:
 
 It's like a sponsored fun run, except the only thing you have to stretch is your cheeks.
 
+There are two ways to play:
+
+- **Smile Session:** smile at jokes and happy facts, and every smile drops a coin.
+- **Try Not to Smile:** keep a straight face while the jokes roll. Every time you crack, your sponsors pay up. Losing is how you win.
+
 - Pick a cause and set a goal
 - Add sponsors with a rate per smile and an optional cap
 - Run a session: a live smile meter, a coin drops into the jar for each smile, and the total updates as you go
@@ -55,6 +60,9 @@ sdk.on('metrics', (buf) => {
 **How the experience responds in real time:**
 
 - **Smile meter.** A bar shows the live HAPPY score from the SDK, with a marker at the counting threshold. You can watch it climb as a joke lands.
+- **A jar that copies your face.** The jar mascot grins when your HAPPY score is high and drops its jaw when the SDK sees SURPRISE, live, so you can literally see the signal.
+- **Combos and golden coins.** Smiles within a few seconds of each other build a combo, and a huge grin (HAPPY at 92% or more) drops a golden coin. These are just for fun; every smile is worth the same pledge.
+- **Try Not to Smile.** The same signal flips into a game: a "straight face" timer runs until the SDK catches you smiling, then resets with a "You cracked!" badge.
 - **Coins in the jar.** When a smile counts, a coin showing what that smile was worth ("+15¢") drops into the jar, and the session total and jar fill update immediately. Once a sponsor hits their cap, the next smile is worth less, and the app tells you.
 - **Counting only real smiles.** The raw score jumps around, so `SmileDetector` adds hysteresis. A smile counts when HAPPY stays at or above 60% for half a second on stable samples. The detector re-arms only after HAPPY falls below 35% for 0.7 seconds. One long grin counts once, a flicker doesn't count, and you can't farm the jar by holding a smile. The detector is plain JavaScript with unit tests that feed it SDK-shaped expression samples.
 - **Coaching from the SDK.** `validationStatus` codes (no face, too dark, face too far, and so on) become friendly hints over the camera preview, so you know when the signal is reliable.
@@ -64,7 +72,7 @@ sdk.on('metrics', (buf) => {
 
 **Most Creative or Delightful Use.**
 
-Most camera-vitals demos point the camera at you to measure something. Smile Jar flips that around and makes your smile the thing that does good. The inspiration was sponsored fun runs: people love backing a friend's effort, but running isn't for everyone. Smiling is something almost anyone can do from their desk, and it's contagious. The playful parts are the coins dropping into the jar, sponsor caps that turn into a little race to fill the jar, and a joke reel built to make you crack. Smiling for charity turns out to be hard to do with a straight face.
+Most camera-vitals demos point the camera at you to measure something. Smile Jar flips that around and makes your smile the thing that does good. The inspiration was sponsored fun runs: people love backing a friend's effort, but running isn't for everyone. Smiling is something almost anyone can do from their desk, and it's contagious. The playful parts are a jar that pulls the same face as you, coins and golden coins dropping in, combos, and the Try Not to Smile mode, where your sponsors are rooting for you to fail. Smiling for charity turns out to be hard to do with a straight face.
 
 ## Consent and Data Handling
 

@@ -102,6 +102,25 @@ input {
 .jar-coin { fill: var(--honey); stroke: #b77610; stroke-width: 1.5; }
 .jar-shine { stroke: #fff; stroke-opacity: .7; stroke-width: 5; stroke-linecap: round; }
 .jar-smile { fill: none; stroke: var(--ink); stroke-width: 3; stroke-linecap: round; }
+.jar-grin { fill: var(--ink); }
+.jar-eye { fill: var(--ink); transition: r .15s; }
+.jar-face.face-grin .jar-eye { transform: scaleY(.55); transform-box: fill-box; transform-origin: center; }
+
+.start-row { display: flex; gap: 10px; flex-wrap: wrap; align-items: center; margin: 18px 0 8px; }
+.start-row button.big { margin-top: 0; }
+button.ghost { border-color: var(--coral); color: var(--coral); font-weight: 650; }
+.mode-head { position: absolute; top: 18px; left: 24px; right: 24px; text-align: left; }
+.reel { position: relative; }
+.streak { margin-top: 4px; font-weight: 700; font-variant-numeric: tabular-nums; }
+.session-jar { position: relative; }
+.badge { position: absolute; top: -14px; right: 14px; padding: 6px 12px; border-radius: 999px; font-weight: 800; font-size: 14px; background: var(--ink); color: var(--bg); }
+.badge.gold { background: linear-gradient(135deg, #ffe27a, #f4a72a); color: #4a2e00; }
+.badge.combo { background: var(--coral); color: #fff; }
+.badge.crack { background: #7b4cd8; color: #fff; }
+.badge.wow { background: #2f8fd8; color: #fff; }
+.badge.pop { animation: pop .35s cubic-bezier(.3, 1.6, .5, 1); }
+@keyframes pop { from { transform: scale(.4); opacity: 0; } to { transform: scale(1); opacity: 1; } }
+.extras { font-weight: 700; color: var(--coral); }
 .eyebrow { text-transform: uppercase; letter-spacing: .08em; font-size: 12px; color: var(--muted); font-weight: 700; }
 .cause { font-size: 22px; font-weight: 700; }
 .big-money { font-size: 56px; font-weight: 800; letter-spacing: -.02em; font-variant-numeric: tabular-nums; line-height: 1.1; margin: 6px 0; }
@@ -178,6 +197,7 @@ input {
   80% { transform: translateY(70px) scale(1); opacity: 1; }
   100% { transform: translateY(90px) scale(.6); opacity: 0; }
 }
+.coin.golden { width: 56px; height: 56px; font-size: 14px; background: radial-gradient(circle at 35% 30%, #fff6c8, #ffd23f 55%, #d99a00); box-shadow: 0 0 18px 4px rgba(255, 205, 60, .7); }
 .toast { position: fixed; bottom: 24px; left: 50%; transform: translateX(-50%); background: var(--ink); color: var(--bg); padding: 10px 18px; border-radius: 999px; font-size: 14px; }
 
 dialog.privacy { border: 1px solid var(--line); border-radius: var(--radius); background: var(--surface); color: var(--ink); max-width: 560px; padding: 24px; }

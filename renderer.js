@@ -6,7 +6,7 @@
 
 'use strict';
 
-import { SmileDetector, DEFAULTS as SMILE } from './src/smile-detector.js';
+import { SmileDetector, DEFAULTS as SMILE, happyScore, mascotFace } from './src/smile-detector.js';
 import { pledgeFor, sessionPledge, marginalRate, formatCents, pledgeStatementCsv } from './src/pledges.js';
 import * as store from './src/store.js';
 import { JOY_REEL, shuffled } from './src/joy-reel.js';
@@ -45,7 +45,13 @@ function persist() {
 
 // ---------------------------------------------------------------- jar SVG
 let jarSeq = 0;
-function jarSvg(fraction, coins) {
+const MOUTHS = {
+  smile: '<path d="M78 120 q22 22 44 0" class="jar-smile"/>',
+  flat: '<path d="M84 128 h32" class="jar-smile"/>',
+  grin: '<path d="M72 114 h56 q-4 34 -28 34 q-24 0 -28 -34 z" class="jar-grin"/>',
+  wow: '<ellipse cx="100" cy="132" rx="11" ry="15" class="jar-grin"/>',
+};
+function jarSvg(fraction, coins, face = 'smile') {
   const clipId = `jarclip${++jarSeq}`;
   const f = Math.max(0, Math.min(1, fraction));
   const top = 40, bottom = 196, h = bottom - top;
@@ -69,7 +75,11 @@ function jarSvg(fraction, coins) {
     </g>
     <path d="M40 44 h120 v132 a24 24 0 0 1 -24 24 h-72 a24 24 0 0 1 -24 -24 z" class="jar-glass"/>
     <path d="M56 60 v80" class="jar-shine"/>
-    <path d="M78 120 q22 22 44 0" class="jar-smile"/>
+    <g class="jar-face face-${face}">
+      <circle cx="82" cy="96" r="${face === 'wow' ? 7 : 5}" class="jar-eye"/>
+      <circle cx="118" cy="96" r="${face === 'wow' ? 7 : 5}" class="jar-eye"/>
+      ${MOUTHS[face] || MOUTHS.smile}
+    </g>
   </svg>`;
 }
 
@@ -152,7 +162,7 @@ function renderHome() {
     const li = document.createElement('li');
     const d = new Date(s.endedAt);
     li.innerHTML = `<span>${d.toLocaleDateString()} ${d.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</span>
-      <span>${s.smiles} smiles</span><span>${(s.durationMs / 60000).toFixed(1)} min</span><strong>${formatCents(s.pledgedCents)}</strong>`;
+      <span>${s.smiles} ${s.mode === 'poker' ? 'cracks' : 'smiles'}</span><span>${(s.durationMs / 60000).toFixed(1)} min</span><strong>${formatCents(s.pledgedCents)}</strong>`;
     hist.appendChild(li);
   }
 }
@@ -175,7 +185,8 @@ $('btn-export').addEventListener('click', () => {
   a.click();
   setTimeout(() => URL.revokeObjectURL(url), 1000);
 });
-$('btn-new-session').addEventListener('click', startSession);
+$('btn-new-session').addEventListener('click', () => startSession('smile'));
+$('btn-poker-session').addEventListener('click', () => startSession('poker'));
 
 // ---------------------------------------------------------------- session
 const STATUS = Object.fromEntries(Object.entries(ProcessingStatus).map(([k, v]) => [v, k]));
@@ -245,10 +256,10 @@ function updateMeter(level) {
   $('meter-value').textContent = `${pct}%`;
 }
 
-function dropCoin(cents) {
+function dropCoin(cents, golden = false) {
   const layer = $('coin-layer');
   const coin = document.createElement('div');
-  coin.className = 'coin';
+  coin.className = golden ? 'coin golden' : 'coin';
   coin.textContent = cents > 0 ? `+${cents}¢` : '☺';
   const jar = $('session-jar').getBoundingClientRect();
   coin.style.left = `${jar.left + jar.width / 2 - 22}px`;
@@ -263,20 +274,61 @@ function renderSession() {
   const cents = sessionPledge(sponsors, session.before, session.smiles);
   $('s-smiles').textContent = session.smiles;
   $('s-money').textContent = `${formatCents(cents)} pledged`;
-  const goal = Math.max(100, state.campaign.goalCents);
-  const total = pledgeFor(sponsors, session.before + session.smiles).total;
-  $('session-jar').innerHTML = jarSvg(total / goal, session.before + session.smiles);
+  renderSessionJar();
+  if (session.mode === 'poker') {
+    const streak = Date.now() - session.straightSince;
+    session.bestStreakMs = Math.max(session.bestStreakMs, streak);
+    $('s-streak').textContent = `Straight face: ${fmtSecs(streak)} \u00b7 best ${fmtSecs(session.bestStreakMs)}`;
+  }
   const left = Math.max(0, session.deadline - Date.now());
   const m = Math.floor(left / 60000), s = Math.floor((left % 60000) / 1000);
   $('s-timer').textContent = `${m}:${String(s).padStart(2, '0')} left`;
   if (left <= 0) endSession();
 }
 
-function onSmile() {
+function fmtSecs(ms) {
+  const t = Math.floor(ms / 1000);
+  return `${Math.floor(t / 60)}:${String(t % 60).padStart(2, '0')}`;
+}
+
+function renderSessionJar() {
+  const goal = Math.max(100, state.campaign.goalCents);
+  const total = pledgeFor(state.campaign.sponsors, session.before + session.smiles).total;
+  $('session-jar').innerHTML = jarSvg(total / goal, session.before + session.smiles, session.face);
+}
+
+function popBadge(text, kind) {
+  const b = $('s-badge');
+  b.textContent = text;
+  b.className = `badge ${kind}`;
+  b.hidden = false;
+  void b.offsetWidth; // restart the pop animation
+  b.classList.add('pop');
+  clearTimeout(popBadge.t);
+  popBadge.t = setTimeout(() => { b.hidden = true; }, 1800);
+}
+
+const COMBO_WINDOW_MS = 8000;
+const GOLDEN_AT = 92;
+
+function onSmile(peakHappy = 0) {
   const sponsors = state.campaign.sponsors;
   const worth = marginalRate(sponsors, session.before + session.smiles);
   session.smiles += 1;
-  dropCoin(worth);
+  const now = Date.now();
+  session.combo = now - session.lastSmileAt <= COMBO_WINDOW_MS ? session.combo + 1 : 1;
+  session.bestCombo = Math.max(session.bestCombo, session.combo);
+  session.lastSmileAt = now;
+  const golden = peakHappy >= GOLDEN_AT;
+  if (golden) session.golden += 1;
+  if (session.mode === 'poker') {
+    session.bestStreakMs = Math.max(session.bestStreakMs, now - session.straightSince);
+    session.straightSince = now;
+  }
+  dropCoin(worth, golden);
+  if (session.mode === 'poker') popBadge(session.combo > 1 ? `Cracked again! x${session.combo}` : 'You cracked!', 'crack');
+  else if (golden) popBadge(session.combo > 1 ? `Golden grin! Combo x${session.combo}` : 'Golden grin!', 'gold');
+  else if (session.combo > 1) popBadge(`Combo x${session.combo}!`, 'combo');
   renderSession();
 }
 
@@ -288,9 +340,15 @@ function handleMetrics(m) {
     for (const e of expressions) {
       const before = detector.count;
       detector.pushExpressions([e]);
-      if (detector.count > before) onSmile();
+      if (detector.count > before) onSmile(happyScore(e));
     }
     updateMeter(detector.level);
+    const face = mascotFace(expressions[expressions.length - 1]);
+    if (face !== session.face) {
+      if (face === 'wow' && session.mode !== 'poker') popBadge('Whoa!', 'wow');
+      session.face = face;
+      renderSessionJar();
+    }
   }
   const pr = m.cardio?.pulseRate;
   if (pr?.length && state.settings.showPulse) {
@@ -318,11 +376,12 @@ function wireSdk(s) {
   s.on('processingStatus', (status) => {
     const name = STATUS[status] || String(status);
     if (status === ProcessingStatus.kStarting) setHint('Starting the SDK...');
-    if (status === ProcessingStatus.kRunning) setHint('Running. Smile when something makes you happy!', 'ok');
+    if (status === ProcessingStatus.kRunning) setHint(session?.mode === 'poker' ? 'Running. Keep a straight face...' : 'Running. Smile when something makes you happy!', 'ok');
     if (status === ProcessingStatus.kError) setHint(`SDK error (${name}).`, 'err');
   });
   s.on('validationStatus', (code, _ts, hint) => {
-    const text = HINTS[code] || hint || 'Adjusting...';
+    let text = HINTS[code] || hint || 'Adjusting...';
+    if (code === ValidationCode.kOk && session?.mode === 'poker') text = 'Looking good. Don\u2019t you dare smile.';
     setHint(text, code === ValidationCode.kOk ? 'ok' : code === ValidationCode.kCameraTuning ? 'warn' : 'err');
   });
   s.on('metrics', (buf) => {
@@ -346,7 +405,7 @@ function wireSdk(s) {
   });
 }
 
-async function startSession() {
+async function startSession(mode = 'smile') {
   if (!store.hasConsent(state)) { renderConsent(); show('consent'); return; }
   showError('');
   detector = new SmileDetector();
@@ -357,7 +416,23 @@ async function startSession() {
     before: store.totalSmiles(state),
     reel: shuffled(JOY_REEL),
     reelIdx: -1,
+    mode,
+    face: 'flat',
+    combo: 0,
+    bestCombo: 0,
+    lastSmileAt: -Infinity,
+    golden: 0,
+    straightSince: Date.now(),
+    bestStreakMs: 0,
   };
+  const poker = mode === 'poker';
+  $('s-mode').textContent = poker ? 'Try Not to Smile' : 'Smile Session';
+  $('s-mode-help').textContent = poker
+    ? 'Keep a straight face. Every time you crack, your sponsors pay up.'
+    : 'Smile when something makes you happy. Every smile drops a coin.';
+  $('s-unit').textContent = poker ? 'cracks' : 'smiles';
+  $('s-streak').hidden = !poker;
+  $('s-badge').hidden = true;
   $('pulse-row').hidden = !state.settings.showPulse;
   $('pulse-value').textContent = '--';
   $('reel-text').hidden = false;
@@ -414,6 +489,7 @@ async function endSession() {
     endedAt: new Date().toISOString(),
     durationMs: Date.now() - s.startedAt,
     smiles: s.smiles,
+    mode: s.mode,
     pledgedCents: sessionPledge(state.campaign.sponsors, s.before, s.smiles),
   };
   state.sessions.push(record);
@@ -422,8 +498,15 @@ async function endSession() {
 
   const goal = Math.max(100, state.campaign.goalCents);
   const { total } = campaignTotals();
-  $('summary-jar').innerHTML = jarSvg(total / goal, store.totalSmiles(state));
+  $('summary-jar').innerHTML = jarSvg(total / goal, store.totalSmiles(state), 'grin');
+  if (s.mode === 'poker') s.bestStreakMs = Math.max(s.bestStreakMs, Date.now() - s.straightSince);
   $('sum-smiles').textContent = record.smiles;
+  $('sum-unit').textContent = s.mode === 'poker' ? (record.smiles === 1 ? 'crack' : 'cracks') : (record.smiles === 1 ? 'smile' : 'smiles');
+  const extras = [];
+  if (s.mode === 'poker') extras.push(`Longest straight face: ${fmtSecs(s.bestStreakMs)}`);
+  if (s.bestCombo > 1) extras.push(`Best combo: x${s.bestCombo}`);
+  if (s.golden > 0) extras.push(`Golden grins: ${s.golden}`);
+  $('sum-extras').textContent = extras.join(' \u00b7 ');
   $('sum-money').textContent = formatCents(record.pledgedCents);
   $('sum-cause').textContent = state.campaign.cause;
   $('sum-detail').textContent = `The jar now holds ${formatCents(total)} of your ${formatCents(goal)} goal.`;

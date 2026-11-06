@@ -4,6 +4,12 @@
 
 Built for the DEV Presage Challenge (`#presagechallenge`).
 
+**Two ways to play**
+- **Smile Session:** smile at jokes and happy facts. Every smile drops a coin.
+- **Try Not to Smile:** keep a straight face while the jokes roll. Every time you crack, your sponsors pay, and your "straight face" streak resets.
+
+**Live reactions:** the jar's face mirrors yours in real time (it grins when the SDK's HAPPY score is high and drops its jaw on SURPRISE), quick smiles in a row build a combo, and a huge grin (HAPPY ≥ 92%) drops a golden coin. These are visual only: every counted smile is worth the same pledge.
+
 - **Live Presage signal used:** facial expressions (`EXPRESSIONS`, the HAPPY score), from the SDK's face bundle.
 - **Optional second signal:** live pulse rate (`PULSE_RATE`, cardio bundle), shown just for fun.
 - **Platform:** desktop Electron app (macOS Apple Silicon, Windows x64, Linux x64/arm64) using `@smartspectra/node-sdk`.
@@ -49,9 +55,10 @@ The key is read at build time from `.env` (or the `SMARTSPECTRA_API_KEY` environ
 1. `npm start`. The consent screen appears first. Tick the agreement box and press **Open the jar**. (The diagnostics box is optional and off by default.)
 2. On the home screen the campaign is pre-filled with a cause and two example sponsors. Edit anything you like.
 3. Press **Start a Smile Session**. The OS may ask for camera permission. The hint at the bottom of the preview tells you when the SDK is running and whether your face is well placed.
-4. Read the cards and smile. Watch the **Live smile signal** bar (the raw HAPPY score from the SDK) cross the marker, and a coin drop into the jar for each counted smile.
-5. Press **End session** (or wait for the timer). The camera turns off and you see the summary. Back on the home screen, try **Export pledge statement (CSV)**.
-6. Open **Privacy & data** and press **Delete all my data** to see the wipe.
+4. Read the cards and smile. Watch the **Live smile signal** bar (the raw HAPPY score from the SDK) cross the marker, a coin drop into the jar for each counted smile, and the jar's face copy yours. Look surprised to see its jaw drop.
+5. Back on the home screen, try **Try Not to Smile** and see how long you can keep a straight face.
+6. Press **End session** (or wait for the timer). The camera turns off and you see the summary. Back on the home screen, try **Export pledge statement (CSV)**.
+7. Open **Privacy & data** and press **Delete all my data** to see the wipe.
 
 Want to see pulse too? Tick **Also show live pulse** on the home screen before starting. This needs an API key provisioned for cardio metrics. If yours isn't, leave it off; smiles work without it.
 
@@ -60,7 +67,7 @@ Want to see pulse too? Tick **Also show live pulse** on the home screen before s
 | Command | What it does |
 | --- | --- |
 | `npm test` | Unit tests for the smile detector and pledge math (no camera needed) |
-| `npm run simulate` | Launches the UI with a **fake** expression signal (hold Space to smile). A yellow banner says so. For UI work only; the real app never uses it |
+| `npm run simulate` | Launches the UI with a **fake** expression signal (hold Space to smile, G for a big grin, W for surprise). A yellow banner says so. For UI work only; the real app never uses it |
 | `npm run dist:mac` / `dist:win` / `dist:linux` | Packaged installers via electron-builder |
 
 ### Troubleshooting
@@ -80,7 +87,7 @@ Want to see pulse too? Tick **Also show live pulse** on the home screen before s
 
 **What is processed.** Camera frames are passed from the renderer to the SmartSpectra SDK running inside the app's main process, analysed on the device, and discarded. Smile Jar reads only the expression scores (and the pulse value if the user turned pulse on), uses them in memory to update the meter and the smile counter, and then drops them.
 
-**What is stored.** One record in the app's local storage on this device (`smilejar.v1`), containing: the consent version and the time it was given; settings (session length, pulse on/off, diagnostics on/off); the cause name and goal; sponsor names, rates and caps as typed by the user; and per-session totals (end time, duration, number of smiles, pledged amount).
+**What is stored.** One record in the app's local storage on this device (`smilejar.v1`), containing: the consent version and the time it was given; settings (session length, pulse on/off, diagnostics on/off); the cause name and goal; sponsor names, rates and caps as typed by the user; and per-session totals (end time, duration, mode, number of smiles, pledged amount).
 
 **What is never stored or sent by Smile Jar.** Video, images, screenshots, face landmarks, expression scores, pulse values, or any biometric data. A video clip the user chooses to play is opened from their disk through a temporary local URL and is never copied or uploaded.
 

@@ -20,9 +20,24 @@ export const DEFAULTS = Object.freeze({
   faceLostMs: 2000,    // a gap with no samples this long resets the detector
 });
 
-export function happyScore(expression) {
-  const s = expression?.scores?.find((x) => x.type === ExpressionType.HAPPY);
+export function scoreOf(expression, type) {
+  const s = expression?.scores?.find((x) => x.type === type);
   return s ? Number(s.confidence) || 0 : 0;
+}
+
+export function happyScore(expression) {
+  return scoreOf(expression, ExpressionType.HAPPY);
+}
+
+/**
+ * Which face the jar mascot should pull, from the latest expression sample.
+ * Purely cosmetic: grin when HAPPY is high, jaw-drop when SURPRISE is high.
+ */
+export function mascotFace(expression, { happyAt = 60, surpriseAt = 50 } = {}) {
+  if (!expression) return 'flat';
+  if (happyScore(expression) >= happyAt) return 'grin';
+  if (scoreOf(expression, ExpressionType.SURPRISE) >= surpriseAt) return 'wow';
+  return 'flat';
 }
 
 export function tsToMs(ts) {
