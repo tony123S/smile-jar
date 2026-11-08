@@ -75,9 +75,34 @@ sdk.on('metrics', (buf) => {
 
 ## Prize Categories
 
-**Most Creative or Delightful Use.**
+I'm entering **both** categories: **Most Creative or Delightful Use** and **Best Thoughtful Real-World Use**.
 
-Most camera-vitals demos point the camera at you to measure something. Smile Jar flips that around and makes your smile the thing that does good. The inspiration came from apps that already turn everyday actions into good: step-counting apps donate for every walk, and recycling apps reward every bottle you return. Smiling felt like the missing one. It's free, almost anyone can do it, and it's contagious. Like a sponsored fun run, people love backing a friend's effort, but here nobody has to run. Smiling is something almost anyone can do from their desk, and it's contagious. The playful parts are a jar that pulls the same face as you and trash-talks you, a joke reel that figures out your sense of humour from your smiles, golden coins and combos, a Smile Receipt to brag with, and the Try Not to Smile mode, where your sponsors are rooting for you to fail. Smiling for charity turns out to be hard to do with a straight face.
+### Most Creative or Delightful Use
+
+Most camera-vitals demos point the camera at you to measure something. Smile Jar flips that around and makes your smile the thing that does good. The inspiration came from apps that already turn everyday actions into good: step-counting apps donate for every walk, and recycling apps reward every bottle you return. Smiling felt like the missing one. It's free, almost anyone can do it, and it's contagious.
+
+What makes it playful:
+
+- A jar that pulls the same face as you, and trash-talks you as your smile signal rises
+- A joke reel that figures out your sense of humour from your smiles
+- Golden coins, combos and a Smile Receipt to brag with
+- **Try Not to Smile**, where your sponsors are rooting for you to fail
+
+Smiling for charity turns out to be very hard to do with a straight face.
+
+### Best Thoughtful Real-World Use
+
+**The need.** Small fundraisers (a school class, an office team, a family raising money for a local food bank or animal shelter) usually rely on sponsored runs, bake sales or walks. Those take time, money, organizing, and a body that can run or walk. Smile Jar gives them a sponsored challenge anyone can do in two minutes at a desk, including people who can't do a fun run.
+
+**Who it's for.** Kids and parents doing a class fundraiser, coworkers doing a charity week, and anyone who wants friends to back them for a cause.
+
+**How it's designed to be usable for them:**
+
+- **No account, no login, no payments.** Pick a cause, add sponsors, press Start. Sponsors donate directly to the charity, using the exported pledge statement, so Smile Jar never touches money.
+- **Fair, understandable pledges.** Sponsors set a rate per smile and a cap, so nobody is surprised by the total. The app shows what the next smile is worth.
+- **Plain-language coaching.** SDK validation codes become simple hints like "It's a bit dark. Add some light."
+- **Consent first.** The camera can't turn on until the user has read and agreed to how it's used, and it only runs during a session. Nothing is recorded, totals stay on the device, and one button deletes everything (details below).
+- **No health claims.** It counts smiles for a game and makes no judgement about anyone's health or feelings.
 
 ## Consent and Data Handling
 
