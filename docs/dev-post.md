@@ -37,6 +37,8 @@ What it looks like also depends on what made you smile. Puns give it tiny horns,
 
 And there's a real-world side too. Walking can donate your steps, recycling can earn you points, so why can't a smile raise money? Friends or family can pledge a few cents per smile to a charity, with a cap so nobody gets a surprise bill. Each smile counts twice: once for the monster's world, and once for the charity.
 
+It's meant to be easy: the home screen shows one goal, a 3-step "How to play" guide shows up before your first game, and during a game a big banner just says "Smile if this makes you happy!".
+
 Other bits:
 
 - **Two games**: *Smile Challenge*, and *Try Not to Smile*, where the monster teases you ("I see that lip twitching...") and every crack still counts.

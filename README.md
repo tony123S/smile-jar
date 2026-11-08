@@ -42,6 +42,8 @@ Each level-up plays an evolution animation, a fanfare that's different for every
 
 A **Live signals** panel shows which signals are actually arriving (`live`), stopped (`paused`), never seen (`waiting`) or not requested (`off`). If a signal never arrives, the monster simply doesn't use it. On the home screen the monster has its own idle bounce and blink; those are animations, not signals.
 
+**Easy to pick up.** The home screen shows one goal ("Press PLAY and smile 3 times to finish Chapter 1"). Before the first game a 3-step **How to play** guide explains it: read the joke, smile for real, your monster grows. In a game a big banner says what to do, and the HUD shows how many smiles until the monster grows.
+
 **Two games.** *Smile Challenge:* smile at jokes and happy facts. *Try Not to Smile:* keep a straight face while the monster teases you as your HAPPY score creeps up. Every crack still counts.
 
 **Music and sound.** Original background music is generated live in the app with Web Audio (no audio files): a dreamy track for the story, soft piano and bells at home, an upbeat track for games, and an uplifting one once the world is fully restored. It loops seamlessly, starts only after you interact with the app, crossfades between screens and pauses when the window is hidden. Smiles never restart it. Sound effects cover smiles, the monster's happy squeak, XP, blooming flowers, level-ups, evolution and chapter completion. **Music** and **Sounds** have separate on/off buttons, plus a volume slider.
@@ -102,7 +104,7 @@ The key is read at build time from `.env` (or the `SMARTSPECTRA_API_KEY` environ
 1. `npm start`. The opening story plays first. Click **Continue** through the four scenes (or **Skip story**), then **LET'S BEGIN!**. Music starts after your first click.
 2. The camera consent screen comes next. Tick the agreement and press **Meet my monster**. (The diagnostics box is optional and off by default.) The camera has not been touched yet.
 3. The home screen shows the baby monster in its grey world, the XP bar, the five chapters and the Real-world impact card. Try the **Music**, **Sounds** and volume controls at the top.
-4. Press **PLAY** and choose **Smile Challenge**. Only now does the SDK open the camera (the OS may ask for permission). The hint on the preview tells you when it's running and how to sit.
+4. Press **PLAY** and choose **Smile Challenge**. Before your first game a 3-step **How to play** guide appears (you can open it again from the home screen). Only after that does the SDK open the camera (the OS may ask for permission). The hint on the preview tells you when it's running and how to sit.
 5. Look at the **Live signals** chips. They show which SmartSpectra signals your key and setup are really delivering.
 6. Smile at the cards. Each counted smile pops "+10 XP" and the sponsors' pledge. Your first smile brings back the first lights; three smiles finish Chapter 1. Blink, talk, look surprised and breathe, and watch the monster copy you.
 7. Smile at a "Sponsor snack" card to see that sponsor get the credit.

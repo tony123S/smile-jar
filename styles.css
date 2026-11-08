@@ -357,3 +357,24 @@ dialog.privacy { max-width: 580px; padding: 24px; }
 @media (prefers-reduced-motion: reduce) {
   *, *::before, *::after { animation-duration: .01s !important; animation-iteration-count: 1 !important; transition: none !important; }
 }
+
+/* making it easy to understand */
+.goal-line { margin: 0; font-size: 17px; font-weight: 900; color: #5a4396; background: rgba(255, 255, 255, .8); border-radius: 999px; padding: 6px 18px; box-shadow: var(--shadow); }
+.home-links { display: flex; gap: 10px; align-items: center; flex-wrap: wrap; justify-content: center; }
+.howto { max-width: 680px; padding: 26px; text-align: center; }
+.howto[open] { animation: pop .35s cubic-bezier(.3, 1.6, .5, 1); }
+.howto h2 { font-size: 26px; color: #5a4396; }
+.howto-steps { list-style: none; padding: 0; margin: 10px 0; display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; }
+.howto-steps li { display: grid; gap: 6px; padding: 16px 12px; border-radius: 22px; background: linear-gradient(180deg, #f6f1ff, #fff); border: 3px solid var(--lavender); }
+.howto-steps li:nth-child(2) { border-color: var(--pink); background: linear-gradient(180deg, #fff2f7, #fff); }
+.howto-steps li:nth-child(3) { border-color: var(--mint); background: linear-gradient(180deg, #f0fff5, #fff); }
+.howto-steps strong { font-size: 17px; }
+.howto-steps span { font-size: 13px; color: var(--muted); font-weight: 700; }
+.howto-steps .howto-icon { font-size: 40px; color: var(--ink); }
+.howto-bonus { font-weight: 700; margin: 8px 0 4px; }
+.actions.center { justify-content: center; }
+.do-this { align-self: center; font-size: 18px; font-weight: 900; color: #fff; background: linear-gradient(180deg, #ffa9c4, var(--play)); border-radius: 999px; padding: 6px 20px; margin-bottom: 10px; box-shadow: 0 3px 0 var(--play-dark); animation: breathe-btn 2.4s ease-in-out infinite; }
+.do-this.poker { background: linear-gradient(180deg, #b7a6ff, #8f7be0); box-shadow: 0 3px 0 #6f5cc4; }
+.signals-head { font-size: 12px; font-weight: 800; margin-top: 12px; }
+.signals-head + .signals { margin-top: 6px; }
+@media (max-width: 860px) { .howto-steps { grid-template-columns: 1fr; } }

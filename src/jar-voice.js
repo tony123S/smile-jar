@@ -5,7 +5,7 @@
 // streak milestones, nudges when it's quiet) are rate-limited so the monster isn't annoying.
 
 const LINES = {
-  start: ['Let\u2019s bring the colours back!', 'Ready when you are!', 'Will you smile with me?'],
+  start: ['Smile at the jokes to help me grow!', 'Make me smile and I\u2019ll grow!', 'Smile at the card, I\u2019ll get stronger!'],
   pokerStart: ['Straight face. Go.', 'Let’s see how tough you are.', 'Don’t. You. Dare.'],
   smile: ['Sparkle!', 'I feel warmer!', 'Ooh, that one counts!', 'More please!', 'The flowers felt that!'],
   combo: ['Combo! Keep going!', 'You’re on a roll!', 'Unstoppable!'],

@@ -17,7 +17,7 @@ export function defaultState() {
   return {
     version: 1,
     consent: null, // { version, acceptedAt }
-    settings: { telemetry: false, showPulse: false, breathMirror: true, sessionMinutes: 2, sound: true, music: true, volume: 0.7 },
+    settings: { telemetry: false, showPulse: false, breathMirror: true, sessionMinutes: 2, sound: true, music: true, volume: 0.7, howToSeen: false },
     storySeen: false, // the opening story plays once; it can be replayed from the home screen
     campaign: {
       cause: 'Local food bank',

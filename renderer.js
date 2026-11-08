@@ -329,7 +329,12 @@ function renderHome() {
   $('home-stage-fill').style.width = `${xpWidth(look.xp)}%`;
   $('home-xp').textContent = xpText(look.xp);
   $('home-next').textContent = nextLine(look.stage);
-  $('home-diet').textContent = dietLine(m);
+  const eaten = DIET_KINDS.some((k) => (m.diet[k] || 0) > 0);
+  $('home-diet').hidden = !eaten;
+  $('home-diet').textContent = eaten ? dietLine(m) : '';
+  $('home-goal-line').textContent = look.stage.next
+    ? `\u{1F60A} Press PLAY and smile ${plural(look.stage.toNext, 'time', 'times')} to finish Chapter ${look.stage.level}`
+    : '\u{1F308} You restored the whole world! Keep playing to raise more for charity.';
   renderChapters(look.stage.index, $('chapter-dots'));
   renderImpact();
 }
@@ -444,8 +449,30 @@ $('btn-reset-monster').addEventListener('click', () => {
 const picker = $('mode-picker');
 $('btn-play').addEventListener('click', () => { sfx.click(); picker.showModal(); });
 $('btn-mode-cancel').addEventListener('click', () => picker.close());
-$('btn-new-session').addEventListener('click', () => { picker.close(); startSession('smile'); });
-$('btn-poker-session').addEventListener('click', () => { picker.close(); startSession('poker'); });
+// A 3-step "How to play" guide before the first game, and any time from the home screen.
+const howto = $('howto');
+let pendingMode = null;
+function openHowTo(mode = null) {
+  pendingMode = mode;
+  $('howto-poker').hidden = mode === 'smile';
+  $('btn-howto-go').textContent = mode ? 'Got it, let\u2019s play!' : 'Got it!';
+  howto.showModal();
+}
+$('btn-howto').addEventListener('click', () => { sfx.click(); openHowTo(null); });
+$('btn-howto-go').addEventListener('click', () => {
+  howto.close();
+  state.settings.howToSeen = true;
+  persist();
+  const mode = pendingMode;
+  pendingMode = null;
+  if (mode) startSession(mode);
+});
+function pickMode(mode) {
+  picker.close();
+  if (!state.settings.howToSeen) openHowTo(mode); else startSession(mode);
+}
+$('btn-new-session').addEventListener('click', () => pickMode('smile'));
+$('btn-poker-session').addEventListener('click', () => pickMode('poker'));
 
 // ---------------------------------------------------------------- session
 const STATUS = Object.fromEntries(Object.entries(ProcessingStatus).map(([k, v]) => [v, k]));
@@ -598,7 +625,9 @@ function renderMonsterNow() {
   $('s-name').textContent = look.name;
   $('s-stage').textContent = chapterLine(look.stage);
   $('s-stage-fill').style.width = `${xpWidth(look.xp)}%`;
-  $('s-xp').textContent = xpText(look.xp);
+  $('s-xp').textContent = look.stage.next
+    ? `${xpText(look.xp)} \u00b7 ${plural(look.stage.toNext, 'smile', 'smiles')} to grow`
+    : xpText(look.xp);
 }
 
 // Metrics arrive many times a second; redraw the monster at most once per frame.
@@ -890,6 +919,8 @@ async function startSession(mode = 'smile') {
     ? 'Keep a straight face. Every crack still gives your monster energy, and your sponsors pledge.'
     : 'Smile when something makes you happy. Every smile gives your monster energy.';
   $('s-unit').textContent = poker ? 'cracks' : 'smiles';
+  $('s-do').textContent = poker ? '\u{1F610} Don\u2019t smile! Keep a straight face.' : '\u{1F60A} Smile if this makes you happy!';
+  $('s-do').classList.toggle('poker', poker);
   $('s-streak').hidden = !poker;
   $('s-badge').hidden = true;
   $('s-speech').hidden = true;
