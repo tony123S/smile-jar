@@ -34,9 +34,9 @@ test('a smile is credited to the card on screen when it started', () => {
   const first = m.next(0);
   const second = m.next(10000);
   // counted 300 ms after the change: it began on the previous card
-  assert.equal(m.creditSmile(10300), first.kind);
+  assert.equal(m.creditSmile(10300).kind, first.kind);
   // counted well after the change: it belongs to the new card
-  assert.equal(m.creditSmile(10000 + LEAD_MS + 100), second.kind);
+  assert.equal(m.creditSmile(10000 + LEAD_MS + 100).kind, second.kind);
 });
 
 test('jar voice always reacts to a smile, but rate-limits ambient lines', () => {

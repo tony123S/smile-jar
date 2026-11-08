@@ -6,7 +6,7 @@
 // it has evidence. In Try Not to Smile mode the same model hunts for your "weak spot".
 // Nothing here is saved: the model lives in memory and is discarded when the session ends.
 
-import { KINDS, shuffled } from './joy-reel.js';
+import { shuffled } from './joy-reel.js';
 
 export const LEAD_MS = 800; // detector hold time (500 ms) plus a little SDK latency
 
@@ -16,7 +16,8 @@ export class HumourModel {
     this.explore = explore;
     this.queues = {};
     this.stats = {};
-    for (const k of KINDS) {
+    this.kinds = [...new Set(cards.map((c) => c.kind))];
+    for (const k of this.kinds) {
       this.queues[k] = shuffled(cards.filter((c) => c.kind === k), rand);
       this.stats[k] = { shown: 0, smiles: 0 };
     }
@@ -34,7 +35,7 @@ export class HumourModel {
   /** The kind with the best smile rate so far, or null before any smile. */
   favourite() {
     let best = null;
-    for (const k of KINDS) {
+    for (const k of this.kinds) {
       if (this.stats[k].smiles === 0) continue;
       if (!best || this.rate(k) > this.rate(best)) best = k;
     }
@@ -42,7 +43,7 @@ export class HumourModel {
   }
 
   pickKind() {
-    const kinds = KINDS.filter((k) => this.queues[k].length > 0 || this.stats[k].shown > 0);
+    const kinds = this.kinds.filter((k) => this.queues[k].length > 0 || this.stats[k].shown > 0);
     const anyEvidence = kinds.some((k) => this.stats[k].smiles > 0);
     if (!anyEvidence || this.rand() < this.explore) {
       this.lastPickWasLearned = false;
@@ -74,18 +75,18 @@ export class HumourModel {
     return card;
   }
 
-  /** Credit a counted smile to whichever card caused it. Returns the credited kind. */
+  /** Credit a counted smile to whichever card caused it. Returns the credited card. */
   creditSmile(now = Date.now(), leadMs = LEAD_MS) {
     let card = this.current;
     if (this.previous && now - leadMs < this.shownAt) card = this.previous;
     if (!card) return null;
     this.stats[card.kind].smiles += 1;
-    return card.kind;
+    return card;
   }
 
   /** e.g. [{ kind: 'Pun', smiles: 3, shown: 4 }, ...] sorted by smiles. */
   summary() {
-    return KINDS.map((k) => ({ kind: k, ...this.stats[k] }))
+    return this.kinds.map((k) => ({ kind: k, ...this.stats[k] }))
       .filter((r) => r.shown > 0)
       .sort((a, b) => b.smiles - a.smiles || a.shown - b.shown);
   }
@@ -96,6 +97,7 @@ const PERSONAS = {
   'Animal fact': 'an animal lover',
   'Memory': 'a nostalgic soul',
   'Picture this': 'a daydreamer',
+  'Sponsor snack': 'a sucker for your sponsors\u2019 jokes',
 };
 
 export function personaFor(kind) {

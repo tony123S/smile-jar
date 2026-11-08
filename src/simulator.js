@@ -1,6 +1,7 @@
 // simulator.js: UI-only stand-in for the SmartSpectra SDK, used by `npm run simulate`
 // and the browser preview. It emits decoded-Metrics-shaped objects so the rest of the
-// app runs unchanged. Hold the Space bar to "smile". The app shows a SIMULATED banner
+// app runs unchanged. Hold Space to "smile", G for a big grin, W for surprise, T to "talk",
+// B to blink. It also fakes a slow breathing trace. The app shows a SIMULATED banner
 // whenever this is active; it is never used in the real build.
 
 import { ExpressionType } from './smile-detector.js';
@@ -15,12 +16,18 @@ export class SimulatedSDK {
     this.smiling = false;
     this.bigGrin = false;
     this.surprised = false;
+    this.talking = false;
+    this.blinking = false;
+    this.t0 = Date.now();
+    this.nextAutoBlink = Date.now() + 2500;
     this.onKey = (e) => {
       if (e.target?.tagName === 'INPUT') return;
       const down = e.type === 'keydown';
       if (e.code === 'Space') { e.preventDefault(); this.smiling = down; }
       if (e.code === 'KeyG') this.bigGrin = down;   // hold G for a golden grin
       if (e.code === 'KeyW') this.surprised = down; // hold W for a jaw-drop
+      if (e.code === 'KeyT') this.talking = down;   // hold T to "talk"
+      if (e.code === 'KeyB') this.blinking = down;  // hold B to blink
     };
   }
 
@@ -55,6 +62,12 @@ export class SimulatedSDK {
         }],
       },
     };
+    const ms = Date.now();
+    let blink = this.blinking;
+    if (ms >= this.nextAutoBlink) { blink = true; if (ms >= this.nextAutoBlink + 150) this.nextAutoBlink = ms + 2500 + Math.random() * 2500; }
+    metrics.face.blinking = [{ detected: blink, stable: true, timestamp: now }];
+    metrics.face.talking = [{ detected: this.talking, stable: true, timestamp: now }];
+    metrics.breathing = { upperTrace: [{ value: Math.sin(((ms - this.t0) / 4000) * Math.PI * 2), timestamp: now, stable: true }] };
     if (this.requestPulse) {
       metrics.cardio = { pulseRate: [{ value: 68 + Math.sin(now / 4e6) * 4, timestamp: now, stable: true }] };
     }

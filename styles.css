@@ -227,3 +227,65 @@ dialog.privacy::backdrop { background: rgba(30, 20, 10, .45); }
   .coin { animation-duration: .01s; }
   .jar-fill, .progress-fill, .meter-fill { transition: none; }
 }
+
+/* ---------------------------------------------------------------- Smile Monster */
+.brand-sub { font-style: normal; color: var(--coral); font-weight: 700; font-size: 15px; margin-left: 4px; }
+.hero { display: grid; grid-template-columns: 300px 1fr; gap: 32px; align-items: center; }
+.monster-wrap { display: flex; justify-content: center; }
+.monster-wrap svg { width: 100%; max-width: 280px; height: auto; display: block; }
+.monster-wrap.big svg { max-width: 300px; }
+.monster-name { font-size: 34px; letter-spacing: -.01em; margin: 2px 0 8px; }
+.stage-bar { height: 10px; background: var(--bg); border: 1px solid var(--line); border-radius: 999px; overflow: hidden; margin: 6px 0; max-width: 420px; }
+.stage-fill { height: 100%; width: 0; background: linear-gradient(90deg, #8bd17c, #7b4cd8); border-radius: 999px; transition: width .6s ease; }
+.money-row { display: flex; gap: 36px; flex-wrap: wrap; align-items: flex-end; margin-top: 18px; }
+.mid-money { font-size: 32px; font-weight: 800; font-variant-numeric: tabular-nums; line-height: 1.1; margin: 6px 0; color: var(--ok); }
+.table-scroll { overflow-x: auto; }
+.sponsors { min-width: 820px; }
+.sponsors td:first-child { display: flex; align-items: center; gap: 6px; min-width: 150px; }
+.sponsors td input[data-k=snack] { min-width: 220px; }
+.sponsors td input[data-k=centsPerSmile], .sponsors td input[data-k=cap], .sponsors td input[data-k=confirmed] { width: 84px; }
+.swatch { display: inline-block; width: 14px; height: 14px; border-radius: 50%; border: 1.5px solid var(--ink); flex: none; vertical-align: -2px; margin-right: 6px; }
+.ok-text { color: var(--ok); font-weight: 700; }
+.checks { display: grid; gap: 10px; align-content: end; }
+.history li.past { color: var(--muted); font-style: italic; }
+
+.monster-card { position: relative; padding: 16px 18px 14px; text-align: center; }
+.monster-card .speech { top: -44px; }
+.monster-meta { display: flex; flex-direction: column; gap: 2px; margin-top: 4px; }
+.monster-meta strong { font-size: 18px; }
+.monster-card .stage-bar { margin: 8px auto 0; }
+.monster-card.evolving { animation: evolve 1.3s ease; }
+@keyframes evolve {
+  0% { transform: scale(1); box-shadow: var(--shadow); }
+  20% { transform: scale(1.04) rotate(-2deg); box-shadow: 0 0 0 6px #ffe27a, 0 0 40px 10px rgba(255, 205, 60, .7); }
+  40% { transform: scale(1.04) rotate(2deg); }
+  60% { transform: scale(1.06) rotate(-1deg); box-shadow: 0 0 0 6px #c792ea, 0 0 40px 10px rgba(123, 76, 216, .5); }
+  100% { transform: scale(1); box-shadow: var(--shadow); }
+}
+.badge.evolve { background: linear-gradient(135deg, #8bd17c, #7b4cd8); color: #fff; }
+.badge.snack { background: #e05aa8; color: #fff; }
+.duo { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
+.duo .cam { aspect-ratio: auto; min-height: 150px; }
+.stats { padding: 14px 16px; }
+.stats .big-count { font-size: 38px; }
+.reel-from { font-weight: 800; color: #e05aa8; margin-top: 6px; }
+.signals { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 12px; }
+.chip { font-size: 12px; font-weight: 700; padding: 3px 9px; border-radius: 999px; border: 1.5px solid var(--line); color: var(--muted); }
+.chip.live { border-color: var(--ok); color: var(--ok); }
+.chip.live::before { content: "\25CF "; }
+.chip.stale { border-color: var(--warn); color: var(--warn); }
+.chip.off { opacity: .55; text-decoration: line-through; }
+.summary-card .monster-wrap svg { max-width: 240px; }
+.evolved { font-weight: 800; color: var(--ok); }
+.sum-sponsors { list-style: none; padding: 0; margin: 10px auto; max-width: 520px; text-align: left; display: grid; gap: 6px; }
+.sum-sponsors li { padding: 6px 10px; border: 1px solid var(--line); border-radius: 10px; }
+@media (max-width: 860px) {
+  .hero, .duo { grid-template-columns: 1fr; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .monster-card.evolving { animation-duration: .01s; }
+}
+.monster-card .speech { max-width: 58%; }
+.monster-card .badge { max-width: 48%; }
+.monster-card .speech { max-width: 58%; }
+.monster-card .badge { max-width: 48%; }

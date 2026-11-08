@@ -5,7 +5,7 @@
 // streak milestones, nudges when it's quiet) are rate-limited so the jar isn't annoying.
 
 const LINES = {
-  start: ['Feed me smiles!', 'Ready when you are.', 'I am an empty jar. Fix that.'],
+  start: ['Feed me smiles!', 'Ready when you are.', 'I\u2019m sooo hungry...'],
   pokerStart: ['Straight face. Go.', 'Let’s see how tough you are.', 'Don’t. You. Dare.'],
   smile: ['Clink!', 'Delicious.', 'Ooh, that one counts!', 'More please!', 'That’s the stuff.'],
   combo: ['Combo! Keep going!', 'You’re on a roll!', 'Unstoppable!'],
@@ -16,6 +16,9 @@ const LINES = {
   pokerCrack: ['GOTCHA!', 'Cracked! Pay up, sponsors.', 'Ha! I knew it.', 'Weak. Lovely, but weak.'],
   pokerMilestone: ['Impressive. Suspiciously impressive.', 'Are you even human?', 'Okay, stone face.'],
   learned: ['I think I know what you like.', 'Found your weak spot.'],
+  evolve: ['I\u2019M EVOLVING!', 'Something is happening to me!', 'Look at me now!'],
+  snack: ['A snack from a sponsor!', 'Ooh, this one\u2019s from a friend.'],
+  talking: ['Shh, I\u2019m listening...', 'Are you talking to me?'],
 };
 
 export class JarVoice {
@@ -67,6 +70,18 @@ export class JarVoice {
     if (face === 'wow') return this.say('wow', now);
     if (now - this.lastEventAt >= this.nudgeAfterMs) { this.lastEventAt = now; return this.say('nudge', now); }
     return null;
+  }
+
+  onEvolve(now) { this.lastEventAt = now; return this.say('evolve', now); }
+
+  onSnack(now) {
+    if (now - this.lastSpokeAt < this.ambientGapMs) return null;
+    return this.say('snack', now);
+  }
+
+  onTalking(now) {
+    if (now - this.lastSpokeAt < this.ambientGapMs * 2) return null;
+    return this.say('talking', now);
   }
 
   onLearned(now) {

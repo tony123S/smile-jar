@@ -1,8 +1,14 @@
 // store.js: everything Smile Jar keeps, in one localStorage record on this device.
 //
-// Kept: consent timestamp, settings, the campaign (cause + sponsors), and per-session
-// totals { endedAt, durationMs, smiles, pledgedCents }. Never kept: video, images,
-// face landmarks, expression scores, pulse values, or anything that identifies a person.
+// Kept: consent timestamp, settings, the campaign (cause, sponsors with their snack jokes,
+// pledge terms and confirmed donations), the monster's "diet" (how many smiles each joke
+// category earned, plus counts of surprise moments and Try Not to Smile sessions), and
+// per-session totals. Never kept: video, images, face landmarks, expression scores, blink,
+// talking or breathing data, pulse values, or anything that identifies a person.
+
+import { emptyMonster } from './monster.js';
+
+export const SPONSOR_COLOURS = ['#ef6f5e', '#2f8fd8', '#f4a72a', '#7b4cd8', '#2f9e6b', '#e05aa8'];
 
 export const STORAGE_KEY = 'smilejar.v1';
 export const CONSENT_VERSION = 1;
@@ -11,16 +17,34 @@ export function defaultState() {
   return {
     version: 1,
     consent: null, // { version, acceptedAt }
-    settings: { telemetry: false, showPulse: false, sessionMinutes: 2, sound: true },
+    settings: { telemetry: false, showPulse: false, breathMirror: true, sessionMinutes: 2, sound: true },
     campaign: {
       cause: 'Local food bank',
       goalCents: 2500,
       sponsors: [
-        { id: 's1', name: 'Grandma Lee', centsPerSmile: 10, capCents: 1000 },
-        { id: 's2', name: 'Office crew', centsPerSmile: 5, capCents: 500 },
+        { id: 's1', name: 'Grandma Lee', centsPerSmile: 10, capCents: 1000, color: SPONSOR_COLOURS[0],
+          snack: 'Why did the banana go to the doctor? It was not peeling well.', snackSmiles: 0, confirmedCents: 0 },
+        { id: 's2', name: 'Office crew', centsPerSmile: 5, capCents: 500, color: SPONSOR_COLOURS[1],
+          snack: 'Remember when the printer jammed during the big client demo?', snackSmiles: 0, confirmedCents: 0 },
       ],
     },
+    monster: emptyMonster(),
+    pastMonsters: [], // { name, stage, smiles, retiredAt } when the user starts a new monster
     sessions: [],
+  };
+}
+
+/** Fill in fields that older saves (or a freshly added row) may not have. */
+export function normalizeSponsor(sp, i = 0) {
+  return {
+    id: sp?.id || `s${Date.now()}${i}`,
+    name: String(sp?.name || 'Sponsor'),
+    centsPerSmile: Math.max(0, Math.round(Number(sp?.centsPerSmile) || 0)),
+    capCents: Math.max(0, Math.round(Number(sp?.capCents) || 0)),
+    color: sp?.color || SPONSOR_COLOURS[i % SPONSOR_COLOURS.length],
+    snack: String(sp?.snack || ''),
+    snackSmiles: Math.max(0, Math.round(Number(sp?.snackSmiles) || 0)),
+    confirmedCents: Math.max(0, Math.round(Number(sp?.confirmedCents) || 0)),
   };
 }
 
@@ -34,12 +58,19 @@ export function load() {
     const raw = storage()?.getItem(STORAGE_KEY);
     if (!raw) return base;
     const s = JSON.parse(raw);
+    const sessions = Array.isArray(s.sessions) ? s.sessions : [];
+    const campaign = { ...base.campaign, ...(s.campaign || {}) };
+    campaign.sponsors = (Array.isArray(campaign.sponsors) ? campaign.sponsors : []).map(normalizeSponsor);
+    // A Smile Jar save from before the monster existed: hatch it with the smiles already earned.
+    const oldMonster = s.monster ? {} : { smiles: sessions.reduce((a, x) => a + (x.smiles || 0), 0) };
     return {
       ...base,
       ...s,
       settings: { ...base.settings, ...(s.settings || {}) },
-      campaign: { ...base.campaign, ...(s.campaign || {}) },
-      sessions: Array.isArray(s.sessions) ? s.sessions : [],
+      campaign,
+      monster: { ...base.monster, ...oldMonster, ...(s.monster || {}), diet: { ...base.monster.diet, ...(s.monster?.diet || {}) } },
+      pastMonsters: Array.isArray(s.pastMonsters) ? s.pastMonsters : [],
+      sessions,
     };
   } catch {
     return base;

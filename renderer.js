@@ -1,23 +1,33 @@
-// renderer.js: Smile Jar UI. Bundled to dist/renderer.bundle.js by build.mjs.
+// renderer.js: Smile Jar, The Smile Monster. Bundled to dist/renderer.bundle.js by build.mjs.
 //
-// SmartSpectra integration lives in startSdk(): we request the SDK's face bundle
-// (which includes EXPRESSIONS), decode each `metrics` event, and feed
-// metrics.face.expression[] into SmileDetector. Pulse (cardio bundle) is optional.
+// SmartSpectra integration lives in buildSdk()/wireSdk(): we request the SDK's face bundle
+// (EXPRESSIONS, BLINKING, TALKING), optionally the breathing bundle (for the breathing mirror)
+// and the cardio bundle (pulse). Each `metrics` event is decoded and:
+//   - face.expression[]  -> SmileDetector (qualifying smiles) + the monster's face
+//   - face.blinking[]    -> BlinkTracker  (the monster blinks when you blink)
+//   - face.talking[]     -> talkingNow    (the monster listens when you talk)
+//   - breathing trace    -> BreathNormalizer (the monster's belly rises and falls with yours)
+// SignalMonitor records which of these actually arrive, and the "Live signals" chips show it.
+// Nothing is invented: if a signal never arrives, its chip says so and the monster ignores it.
 
 'use strict';
 
 import { SmileDetector, DEFAULTS as SMILE, happyScore, mascotFace } from './src/smile-detector.js';
-import { pledgeFor, sessionPledge, marginalRate, formatCents, pledgeStatementCsv } from './src/pledges.js';
+import {
+  pledgeFor, sessionPledge, marginalRate, formatCents, pledgeStatementCsv, sponsorOwes, confirmedTotal, pledgeLedger,
+} from './src/pledges.js';
 import * as store from './src/store.js';
 import { JOY_REEL } from './src/joy-reel.js';
 import { HumourModel, personaFor } from './src/humour.js';
 import { JarVoice } from './src/jar-voice.js';
-import { sfx, setMuted, isMuted } from './src/sounds.js';
+import { sfx, setMuted } from './src/sounds.js';
 import { drawReceipt } from './src/receipt.js';
 import { SimulatedSDK } from './src/simulator.js';
+import { stageFor, traitsFor, monsterName, monsterSvg, emptyMonster, DIET_KINDS } from './src/monster.js';
+import { SIGNALS, SignalMonitor, BlinkTracker, talkingNow, BreathNormalizer } from './src/signals.js';
 
 const {
-  SmartSpectraSDK, ProcessingStatus, ValidationCode, faceMetrics, cardioMetrics,
+  SmartSpectraSDK, ProcessingStatus, ValidationCode, faceMetrics, cardioMetrics, breathingMetrics,
 } = require('@smartspectra/node-sdk/renderer');
 const { decodeMetrics } = require('@smartspectra/node-sdk/messages');
 
@@ -28,7 +38,7 @@ const SIMULATE = __SIMULATE__;
 const $ = (id) => document.getElementById(id);
 let state = store.load();
 
-// ---------------------------------------------------------------- views
+// ---------------------------------------------------------------- helpers
 const VIEWS = ['consent', 'home', 'session', 'summary'];
 function show(view) {
   for (const v of VIEWS) $(`view-${v}`).hidden = v !== view;
@@ -40,53 +50,69 @@ function toast(msg) {
   t.textContent = msg;
   t.hidden = false;
   clearTimeout(toast.timer);
-  toast.timer = setTimeout(() => { t.hidden = true; }, 2600);
+  toast.timer = setTimeout(() => { t.hidden = true; }, 2800);
 }
 
 function persist() {
   if (!store.save(state)) toast('Could not save on this device; totals will reset when the app closes.');
 }
 
-// ---------------------------------------------------------------- jar SVG
-let jarSeq = 0;
-const STANDALONE_JAR_CSS = '.jar-lid{fill:#f4a72a;stroke:#2b2118;stroke-width:2.5}.jar-glass{fill:none;stroke:#2b2118;stroke-width:3}.jar-fill{fill:#ffe2a8}.jar-coin{fill:#f4a72a;stroke:#b77610;stroke-width:1.5}.jar-shine{stroke:#fff;stroke-opacity:.7;stroke-width:5;stroke-linecap:round}.jar-smile{fill:none;stroke:#2b2118;stroke-width:3;stroke-linecap:round}.jar-grin,.jar-eye{fill:#2b2118}';
-const MOUTHS = {
-  smile: '<path d="M78 120 q22 22 44 0" class="jar-smile"/>',
-  flat: '<path d="M84 128 h32" class="jar-smile"/>',
-  grin: '<path d="M72 114 h56 q-4 34 -28 34 q-24 0 -28 -34 z" class="jar-grin"/>',
-  wow: '<ellipse cx="100" cy="132" rx="11" ry="15" class="jar-grin"/>',
+function esc(s) {
+  return String(s ?? '').replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+}
+
+function fmtSecs(ms) {
+  const t = Math.floor(ms / 1000);
+  return `${Math.floor(t / 60)}:${String(t % 60).padStart(2, '0')}`;
+}
+
+const plural = (n, one, many) => `${n} ${n === 1 ? one : many}`;
+
+// ---------------------------------------------------------------- monster
+// The saved monster plus whatever the running session has fed it (committed when the session ends).
+function liveMonster(s = session) {
+  const m = { ...state.monster, diet: { ...state.monster.diet }, snackBy: { ...(state.monster.snackBy || {}) } };
+  if (!s) return m;
+  m.smiles += s.smiles;
+  for (const [k, n] of Object.entries(s.diet)) m.diet[k] = (m.diet[k] || 0) + n;
+  for (const [id, n] of Object.entries(s.snack)) m.snackBy[id] = (m.snackBy[id] || 0) + n;
+  m.surprises += s.surprises;
+  return m;
+}
+
+function monsterLook(m) {
+  // Heart patches come from sponsors whose snack made *this* monster smile.
+  const sponsors = state.campaign.sponsors.map((sp) => ({ ...sp, snackSmiles: m.snackBy?.[sp.id] || 0 }));
+  const stage = stageFor(m.smiles);
+  const traits = traitsFor(m, sponsors);
+  return { stage, traits, name: monsterName(traits, stage.key) };
+}
+
+let uidSeq = 0;
+function drawMonster(el, m, live = {}, standalone = false) {
+  const { stage, traits } = monsterLook(m);
+  const svg = monsterSvg({ stage: stage.key, traits, progress: stage.progress, live, standalone, uid: `m${++uidSeq}` });
+  if (el) el.innerHTML = svg;
+  return svg;
+}
+
+function stageLine(stage) {
+  return stage.next ? `${plural(stage.toNext, 'more smile', 'more smiles')} until ${stage.next.label}` : 'Fully grown. It keeps eating, though.';
+}
+
+const TRAIT_HINT = {
+  'Pun': 'puns grow horns',
+  'Animal fact': 'animal facts grow fur and ears',
+  'Memory': 'memories make it glow',
+  'Picture this': 'daydreams grow stars',
+  'Sponsor snack': 'sponsor snacks add hearts in their colour',
 };
-function jarSvg(fraction, coins, face = 'smile', standalone = false) {
-  const clipId = `jarclip${++jarSeq}`;
-  const f = Math.max(0, Math.min(1, fraction));
-  const top = 40, bottom = 196, h = bottom - top;
-  const level = bottom - h * f;
-  const coinDots = [];
-  const n = Math.min(coins, 60);
-  for (let i = 0; i < n; i++) {
-    const row = Math.floor(i / 6), col = i % 6;
-    const y = bottom - 10 - row * 12;
-    if (y < top + 14) break;
-    const x = 52 + col * 16 + (row % 2 ? 8 : 0);
-    coinDots.push(`<circle cx="${x}" cy="${y}" r="6" class="jar-coin"/>`);
-  }
-  return `
-  <svg ${standalone ? 'xmlns="http://www.w3.org/2000/svg" width="200" height="220"' : ''} viewBox="0 0 200 220" class="jar" role="img" aria-label="Jar ${Math.round(f * 100)} percent full">
-    ${standalone ? `<style>${STANDALONE_JAR_CSS}</style>` : ''}
-    <defs><clipPath id="${clipId}"><path d="M40 44 h120 v132 a24 24 0 0 1 -24 24 h-72 a24 24 0 0 1 -24 -24 z"/></clipPath></defs>
-    <rect x="52" y="10" width="96" height="22" rx="6" class="jar-lid"/>
-    <g clip-path="url(#${clipId})">
-      <rect x="30" y="${level}" width="140" height="${bottom + 10 - level}" class="jar-fill"/>
-      ${coinDots.join('')}
-    </g>
-    <path d="M40 44 h120 v132 a24 24 0 0 1 -24 24 h-72 a24 24 0 0 1 -24 -24 z" class="jar-glass"/>
-    <path d="M56 60 v80" class="jar-shine"/>
-    <g class="jar-face face-${face}">
-      <circle cx="82" cy="96" r="${face === 'wow' ? 7 : 5}" class="jar-eye"/>
-      <circle cx="118" cy="96" r="${face === 'wow' ? 7 : 5}" class="jar-eye"/>
-      ${MOUTHS[face] || MOUTHS.smile}
-    </g>
-  </svg>`;
+
+function dietLine(m) {
+  const eaten = DIET_KINDS.filter((k) => (m.diet[k] || 0) > 0).map((k) => `${k} ${m.diet[k]}`);
+  return eaten.length
+    ? `Diet: ${eaten.join(' · ')}`
+    : `What it eats shapes how it looks: ${Object.values(TRAIT_HINT).join(', ')}.`;
 }
 
 // ---------------------------------------------------------------- consent
@@ -99,6 +125,7 @@ $('consent-agree').addEventListener('change', (e) => { $('consent-accept').disab
 $('consent-accept').addEventListener('click', () => {
   state.consent = { version: store.CONSENT_VERSION, acceptedAt: new Date().toISOString() };
   state.settings.telemetry = $('consent-telemetry').checked;
+  if (!state.monster.bornAt) state.monster.bornAt = new Date().toISOString();
   persist();
   renderHome();
   show('home');
@@ -113,43 +140,64 @@ function campaignTotals() {
 
 function renderHome() {
   const c = state.campaign;
-  const { smiles, total, lines } = campaignTotals();
+  const { smiles, total } = campaignTotals();
   const goal = Math.max(100, c.goalCents || 0);
-  $('home-jar').innerHTML = jarSvg(total / goal, smiles);
+  const m = liveMonster(null);
+  const look = monsterLook(m);
+
+  drawMonster($('home-monster'), m, { face: 'flat' });
+  $('home-stage').textContent = `Stage ${look.stage.index + 1} of 4 · ${look.stage.label}`;
+  $('home-name').textContent = look.name;
+  $('home-stage-fill').style.width = `${look.stage.progress * 100}%`;
+  $('home-next').textContent = `${plural(m.smiles, 'smile', 'smiles')} eaten. ${stageLine(look.stage)}`;
+  $('home-diet').textContent = dietLine(m);
+
+  const confirmed = confirmedTotal(c.sponsors);
   $('home-cause').textContent = c.cause || 'a good cause';
   $('home-total').textContent = formatCents(total);
+  $('home-confirmed').textContent = formatCents(confirmed);
   $('home-smiles').textContent = smiles;
   $('home-goal').textContent = formatCents(goal);
   $('home-progress').style.width = `${Math.min(100, (total / goal) * 100)}%`;
   const rate = marginalRate(c.sponsors, smiles);
   $('home-rate').textContent = c.sponsors.length === 0
     ? 'Add a sponsor so your smiles are worth something.'
-    : rate > 0 ? `Your next smile is worth ${rate}¢.` : 'Every sponsor has reached their cap. Add another to keep going!';
+    : rate > 0 ? `your next smile is worth ${rate}¢` : 'every sponsor has reached their cap';
 
   $('f-cause').value = c.cause;
   $('f-goal').value = Math.round(goal / 100);
   $('f-minutes').value = state.settings.sessionMinutes;
   $('f-pulse').checked = !!state.settings.showPulse;
+  $('f-breath').checked = !!state.settings.breathMirror;
 
+  const ledger = pledgeLedger(c.sponsors, smiles);
   const body = $('sponsor-rows');
   body.innerHTML = '';
   for (const s of c.sponsors) {
-    const owes = lines.find((l) => l.id === s.id)?.cents || 0;
+    const l = ledger.find((x) => x.id === s.id);
     const tr = document.createElement('tr');
     tr.innerHTML = `
-      <td><input data-k="name" maxlength="40" aria-label="Sponsor name"></td>
+      <td><span class="swatch" style="background:${esc(s.color)}"></span><input data-k="name" maxlength="40" aria-label="Sponsor name"></td>
       <td><input data-k="centsPerSmile" type="number" min="0" max="500" step="1" aria-label="Cents per smile"></td>
       <td><input data-k="cap" type="number" min="0" step="1" placeholder="none" aria-label="Cap in dollars"></td>
-      <td class="owes">${formatCents(owes)}</td>
+      <td><input data-k="snack" maxlength="160" placeholder="Optional joke or memory" aria-label="Snack joke"></td>
+      <td class="owes">${formatCents(l.pledged)}${l.snackSmiles ? `<div class="muted small">${plural(l.snackSmiles, 'snack smile', 'snack smiles')}</div>` : ''}</td>
+      <td><input data-k="confirmed" type="number" min="0" step="0.01" aria-label="Confirmed donated in dollars">
+        <div class="small ${l.outstanding ? 'muted' : 'ok-text'}">${l.pledged === 0 ? '' : l.outstanding ? `${formatCents(l.outstanding)} to go` : 'Donated'}</div></td>
       <td><button type="button" class="link danger-link" aria-label="Remove sponsor">Remove</button></td>`;
     tr.querySelector('[data-k=name]').value = s.name;
     tr.querySelector('[data-k=centsPerSmile]').value = s.centsPerSmile;
     tr.querySelector('[data-k=cap]').value = s.capCents ? Math.round(s.capCents / 100) : '';
+    tr.querySelector('[data-k=snack]').value = s.snack || '';
+    tr.querySelector('[data-k=confirmed]').value = s.confirmedCents ? (s.confirmedCents / 100).toFixed(2) : '';
     tr.addEventListener('change', (e) => {
       const k = e.target.dataset.k;
-      if (k === 'name') s.name = e.target.value.trim() || 'Sponsor';
-      if (k === 'centsPerSmile') s.centsPerSmile = Math.max(0, Math.round(Number(e.target.value) || 0));
-      if (k === 'cap') s.capCents = e.target.value === '' ? 0 : Math.max(0, Math.round(Number(e.target.value) * 100));
+      const v = e.target.value;
+      if (k === 'name') s.name = v.trim() || 'Sponsor';
+      if (k === 'centsPerSmile') s.centsPerSmile = Math.max(0, Math.round(Number(v) || 0));
+      if (k === 'cap') s.capCents = v === '' ? 0 : Math.max(0, Math.round(Number(v) * 100));
+      if (k === 'snack') s.snack = v.trim();
+      if (k === 'confirmed') s.confirmedCents = v === '' ? 0 : Math.max(0, Math.round(Number(v) * 100));
       persist();
       renderHome();
     });
@@ -171,14 +219,22 @@ function renderHome() {
       <span>${s.smiles} ${s.mode === 'poker' ? 'cracks' : 'smiles'}</span><span>${(s.durationMs / 60000).toFixed(1)} min</span><strong>${formatCents(s.pledgedCents)}</strong>`;
     hist.appendChild(li);
   }
+  for (const p of state.pastMonsters.slice().reverse().slice(0, 5)) {
+    const li = document.createElement('li');
+    li.className = 'past';
+    li.innerHTML = `<span>Retired ${new Date(p.retiredAt).toLocaleDateString()}</span><span>${esc(p.name)}</span><span>${esc(p.stage)}</span><strong>${plural(p.smiles, 'smile', 'smiles')}</strong>`;
+    hist.appendChild(li);
+  }
 }
 
 $('f-cause').addEventListener('change', (e) => { state.campaign.cause = e.target.value.trim() || 'a good cause'; persist(); renderHome(); });
 $('f-goal').addEventListener('change', (e) => { state.campaign.goalCents = Math.max(1, Math.round(Number(e.target.value) || 25)) * 100; persist(); renderHome(); });
 $('f-minutes').addEventListener('change', (e) => { state.settings.sessionMinutes = Math.min(15, Math.max(1, Math.round(Number(e.target.value) || 2))); persist(); renderHome(); });
 $('f-pulse').addEventListener('change', (e) => { state.settings.showPulse = e.target.checked; persist(); });
+$('f-breath').addEventListener('change', (e) => { state.settings.breathMirror = e.target.checked; persist(); });
 $('btn-add-sponsor').addEventListener('click', () => {
-  state.campaign.sponsors.push({ id: `s${Date.now()}`, name: 'New sponsor', centsPerSmile: 5, capCents: 0 });
+  const i = state.campaign.sponsors.length;
+  state.campaign.sponsors.push(store.normalizeSponsor({ id: `s${Date.now()}`, name: 'New sponsor', centsPerSmile: 5 }, i));
   persist();
   renderHome();
 });
@@ -190,6 +246,16 @@ $('btn-export').addEventListener('click', () => {
   a.download = `smile-jar-pledges-${new Date().toISOString().slice(0, 10)}.csv`;
   a.click();
   setTimeout(() => URL.revokeObjectURL(url), 1000);
+});
+$('btn-reset-monster').addEventListener('click', () => {
+  const m = liveMonster(null);
+  const look = monsterLook(m);
+  if (!confirm(`Retire ${look.name} and start a new egg? Pledges and session totals are kept.`)) return;
+  if (m.smiles > 0) state.pastMonsters.push({ name: look.name, stage: look.stage.label, smiles: m.smiles, retiredAt: new Date().toISOString() });
+  state.monster = { ...emptyMonster(), bornAt: new Date().toISOString() };
+  persist();
+  renderHome();
+  toast('A new egg appeared in the jar.');
 });
 $('btn-new-session').addEventListener('click', () => startSession('smile'));
 $('btn-poker-session').addEventListener('click', () => startSession('poker'));
@@ -204,6 +270,7 @@ const HINTS = {
   [ValidationCode.kFaceSizeOutOfRange]: 'Adjust your distance from the camera.',
   [ValidationCode.kTooDark]: 'It’s a bit dark. Add some light.',
   [ValidationCode.kTooBright]: 'Too bright. Avoid light behind or right on you.',
+  [ValidationCode.kChestNotVisible]: 'Sit back a little so your chest is in view (for breathing).',
   [ValidationCode.kCameraTuning]: 'Tuning the camera...',
   [ValidationCode.kFrameRateTooLow]: 'Camera frame rate is low. Close other camera apps.',
   [ValidationCode.kExcessiveMotion]: 'Hold still for a moment.',
@@ -216,8 +283,9 @@ const HINTS = {
 
 let sdk = null;
 let detector = null;
-let session = null; // { startedAt, smiles, before, timer, deadline, reel, reelIdx }
+let session = null;
 let lastSummary = null;
+let lastReceipt = null;
 
 function setHint(text, kind = '') {
   const h = $('hint');
@@ -231,18 +299,31 @@ function showError(msg) {
   e.hidden = !msg;
 }
 
+function reelCards() {
+  const snacks = state.campaign.sponsors
+    .filter((s) => (s.snack || '').trim())
+    .map((s) => ({ kind: 'Sponsor snack', text: s.snack.trim(), sponsorId: s.id, from: s.name }));
+  return [...JOY_REEL, ...snacks];
+}
+
 function nextCard() {
   if (!session) return;
-  const card = session.humour.next(Date.now());
+  const now = Date.now();
+  const card = session.humour.next(now);
   $('reel-kind').textContent = card.kind;
   $('reel-text').textContent = card.text;
+  $('reel-from').hidden = !card.sponsorId;
+  $('reel-from').textContent = card.sponsorId ? `A snack from ${card.from}` : '';
   const fav = session.humour.favourite();
   const learned = session.humour.lastPickWasLearned && fav === card.kind;
   $('reel-why').textContent = learned
     ? (session.mode === 'poker' ? `Picked to crack you: ${card.kind.toLowerCase()}s got you before` : `Picked for you: you smile at ${card.kind.toLowerCase()}s`)
     : '';
-  if (learned && !session.toldLearned) {
-    const line = session.voice.onLearned(Date.now());
+  if (card.sponsorId) {
+    const line = session.voice.onSnack(now);
+    if (line) speak(line.text);
+  } else if (learned && !session.toldLearned) {
+    const line = session.voice.onLearned(now);
     if (line) { session.toldLearned = true; speak(line.text); }
   }
   renderTaste();
@@ -251,7 +332,7 @@ function nextCard() {
 function renderTaste() {
   const rows = session.humour.summary().filter((r) => r.smiles > 0);
   $('s-taste').textContent = rows.length
-    ? `${session.mode === 'poker' ? 'Your weak spots' : 'What makes you smile'}: ${rows.map((r) => `${r.kind} ${r.smiles}`).join(' \u00b7 ')}`
+    ? `${session.mode === 'poker' ? 'Your weak spots' : 'What makes you smile'}: ${rows.map((r) => `${r.kind} ${r.smiles}`).join(' · ')}`
     : '';
 }
 
@@ -259,7 +340,6 @@ function speak(text) {
   const b = $('s-speech');
   b.textContent = text;
   b.hidden = false;
-  void b.offsetWidth;
   b.classList.remove('pop');
   void b.offsetWidth;
   b.classList.add('pop');
@@ -302,16 +382,67 @@ function updateMeter(level) {
   $('meter-value').textContent = `${pct}%`;
 }
 
-function dropCoin(cents, golden = false) {
+function dropCoin(cents, golden = false, color = null) {
   const layer = $('coin-layer');
   const coin = document.createElement('div');
   coin.className = golden ? 'coin golden' : 'coin';
+  if (color) coin.style.boxShadow = `0 0 0 4px ${color}`;
   coin.textContent = cents > 0 ? `+${cents}¢` : '☺';
-  const jar = $('session-jar').getBoundingClientRect();
-  coin.style.left = `${jar.left + jar.width / 2 - 22}px`;
-  coin.style.top = `${jar.top - 40}px`;
+  const box = $('s-monster').getBoundingClientRect();
+  coin.style.left = `${box.left + box.width / 2 - 22}px`;
+  coin.style.top = `${box.top + 10}px`;
   layer.appendChild(coin);
   setTimeout(() => coin.remove(), 1200);
+}
+
+// Live mirror state, filled only from real SDK signals (or the labelled simulator).
+function liveFace() {
+  const s = session;
+  if (!s) return {};
+  const now = Date.now();
+  return {
+    face: s.face,
+    eyesClosed: s.blink.closed || now < s.eyesClosedUntil,
+    breath: state.settings.breathMirror ? s.breath.level() : null,
+    talking: !!s.talking,
+  };
+}
+
+function renderMonsterNow() {
+  if (!session) return;
+  const m = liveMonster();
+  const look = monsterLook(m);
+  drawMonster($('s-monster'), m, liveFace());
+  $('s-name').textContent = look.name;
+  $('s-stage').textContent = `${look.stage.label} · ${stageLine(look.stage)}`;
+  $('s-stage-fill').style.width = `${look.stage.progress * 100}%`;
+}
+
+// Metrics arrive many times a second; redraw the monster at most once per frame.
+let monsterDirty = false;
+function scheduleMonster() {
+  if (monsterDirty) return;
+  monsterDirty = true;
+  requestAnimationFrame(() => { monsterDirty = false; renderMonsterNow(); });
+}
+
+function renderSignals() {
+  if (!session) return;
+  const st = session.signals.status(Date.now());
+  const requested = {
+    expressions: true, blinking: true, talking: true,
+    breathing: !!state.settings.breathMirror, pulse: !!state.settings.showPulse,
+  };
+  $('signal-chips').innerHTML = SIGNALS.map(({ key, label }) => {
+    const s = st[key];
+    const cls = !requested[key] ? 'off' : s.live ? 'live' : s.seen ? 'stale' : 'wait';
+    const word = !requested[key] ? 'off' : s.live ? 'live' : s.seen ? 'paused' : 'waiting';
+    return `<span class="chip ${cls}" title="${s.count} samples received">${label}: ${word}</span>`;
+  }).join('');
+  const blinks = session.blink.blinks;
+  $('s-blinks').textContent = st.blinking.seen
+    ? `Blinks seen: ${blinks}${session.talking ? ' · you’re talking' : ''}`
+    : '';
 }
 
 function renderSession() {
@@ -320,27 +451,16 @@ function renderSession() {
   const cents = sessionPledge(sponsors, session.before, session.smiles);
   $('s-smiles').textContent = session.smiles;
   $('s-money').textContent = `${formatCents(cents)} pledged`;
-  renderSessionJar();
   if (session.mode === 'poker') {
     const streak = Date.now() - session.straightSince;
     session.bestStreakMs = Math.max(session.bestStreakMs, streak);
-    $('s-streak').textContent = `Straight face: ${fmtSecs(streak)} \u00b7 best ${fmtSecs(session.bestStreakMs)}`;
+    $('s-streak').textContent = `Straight face: ${fmtSecs(streak)} · best ${fmtSecs(session.bestStreakMs)}`;
   }
+  renderSignals();
   const left = Math.max(0, session.deadline - Date.now());
   const m = Math.floor(left / 60000), s = Math.floor((left % 60000) / 1000);
   $('s-timer').textContent = `${m}:${String(s).padStart(2, '0')} left`;
   if (left <= 0) endSession();
-}
-
-function fmtSecs(ms) {
-  const t = Math.floor(ms / 1000);
-  return `${Math.floor(t / 60)}:${String(t % 60).padStart(2, '0')}`;
-}
-
-function renderSessionJar() {
-  const goal = Math.max(100, state.campaign.goalCents);
-  const total = pledgeFor(state.campaign.sponsors, session.before + session.smiles).total;
-  $('session-jar').innerHTML = jarSvg(total / goal, session.before + session.smiles, session.face);
 }
 
 function popBadge(text, kind) {
@@ -351,62 +471,126 @@ function popBadge(text, kind) {
   void b.offsetWidth; // restart the pop animation
   b.classList.add('pop');
   clearTimeout(popBadge.t);
-  popBadge.t = setTimeout(() => { b.hidden = true; }, 1800);
+  popBadge.t = setTimeout(() => { b.hidden = true; }, 1900);
+}
+
+function celebrateEvolution(stage) {
+  const card = $('monster-card');
+  card.classList.remove('evolving');
+  void card.offsetWidth;
+  card.classList.add('evolving');
+  setTimeout(() => card.classList.remove('evolving'), 1400);
+  sfx.evolve();
+  popBadge(stage.key === 'blob' ? 'It hatched!' : `Evolved: ${stage.label}!`, 'evolve');
+  speak(session.voice.onEvolve(Date.now()).text);
+  session.evolutions.push(stage.label);
 }
 
 const COMBO_WINDOW_MS = 8000;
 const GOLDEN_AT = 92;
 
 function onSmile(peakHappy = 0) {
+  const s = session;
   const sponsors = state.campaign.sponsors;
-  const worth = marginalRate(sponsors, session.before + session.smiles);
-  session.smiles += 1;
+  const worth = marginalRate(sponsors, s.before + s.smiles);
+  const stageBefore = stageFor(liveMonster().smiles);
+  s.smiles += 1;
   const now = Date.now();
-  session.combo = now - session.lastSmileAt <= COMBO_WINDOW_MS ? session.combo + 1 : 1;
-  session.bestCombo = Math.max(session.bestCombo, session.combo);
-  session.lastSmileAt = now;
+  s.combo = now - s.lastSmileAt <= COMBO_WINDOW_MS ? s.combo + 1 : 1;
+  s.bestCombo = Math.max(s.bestCombo, s.combo);
+  s.lastSmileAt = now;
   const golden = peakHappy >= GOLDEN_AT;
-  if (golden) session.golden += 1;
-  if (session.mode === 'poker') {
-    session.bestStreakMs = Math.max(session.bestStreakMs, now - session.straightSince);
-    session.straightSince = now;
+  if (golden) s.golden += 1;
+  if (s.mode === 'poker') {
+    s.bestStreakMs = Math.max(s.bestStreakMs, now - s.straightSince);
+    s.straightSince = now;
   }
-  dropCoin(worth, golden);
-  session.humour.creditSmile(now);
+
+  // Feed the monster whatever was on screen when the smile started.
+  const card = s.humour.creditSmile(now);
+  const kind = card?.kind || 'Pun';
+  s.diet[kind] = (s.diet[kind] || 0) + 1;
+  let snackFrom = null;
+  if (card?.sponsorId) {
+    s.snack[card.sponsorId] = (s.snack[card.sponsorId] || 0) + 1;
+    snackFrom = sponsors.find((x) => x.id === card.sponsorId) || null;
+  }
+  dropCoin(worth, golden, snackFrom?.color);
   renderTaste();
-  if (session.mode === 'poker') { sfx.crack(); session.voice.resetStreak(); }
+
+  if (s.mode === 'poker') { sfx.crack(); s.voice.resetStreak(); }
   else if (golden) sfx.golden();
-  else { sfx.coin(); if (session.combo > 1) sfx.combo(session.combo); }
-  speak(session.voice.onSmile({ mode: session.mode, golden, combo: session.combo }, now).text);
-  if (session.mode === 'poker') popBadge(session.combo > 1 ? `Cracked again! x${session.combo}` : 'You cracked!', 'crack');
-  else if (golden) popBadge(session.combo > 1 ? `Golden grin! Combo x${session.combo}` : 'Golden grin!', 'gold');
-  else if (session.combo > 1) popBadge(`Combo x${session.combo}!`, 'combo');
+  else { sfx.coin(); if (s.combo > 1) sfx.combo(s.combo); }
+  if (snackFrom) sfx.snack();
+  speak(s.voice.onSmile({ mode: s.mode, golden, combo: s.combo }, now).text);
+
+  const stageAfter = stageFor(liveMonster().smiles);
+  if (stageAfter.index > stageBefore.index) celebrateEvolution(stageAfter);
+  else if (snackFrom) popBadge(`${snackFrom.name}’s snack got you!`, 'snack');
+  else if (s.mode === 'poker') popBadge(s.combo > 1 ? `Cracked again! x${s.combo}` : 'You cracked!', 'crack');
+  else if (golden) popBadge(s.combo > 1 ? `Golden grin! Combo x${s.combo}` : 'Golden grin!', 'gold');
+  else if (s.combo > 1) popBadge(`Combo x${s.combo}!`, 'combo');
   renderSession();
+  scheduleMonster();
 }
 
+const SURPRISE_COOLDOWN_MS = 3000;
+
 function handleMetrics(m) {
-  if (!session || !detector) return;
-  const expressions = m.face?.expression;
+  const s = session;
+  if (!s || !detector) return;
+  const now = Date.now();
+  s.signals.observe(m, now);
+  const f = m.face;
+
+  const expressions = f?.expression;
   if (expressions?.length) {
     // Process sample by sample so each counted smile gets its own coin.
     for (const e of expressions) {
       const before = detector.count;
       detector.pushExpressions([e]);
       if (detector.count > before) onSmile(happyScore(e));
+      if (!session) return; // the session may have ended inside onSmile
     }
     updateMeter(detector.level);
     const face = mascotFace(expressions[expressions.length - 1]);
-    if (face !== session.face) {
-      if (face === 'wow' && session.mode !== 'poker') { popBadge('Whoa!', 'wow'); sfx.wow(); }
-      session.face = face;
-      renderSessionJar();
+    if (face !== s.face) {
+      if (face === 'wow' && now - s.lastSurpriseAt > SURPRISE_COOLDOWN_MS) {
+        s.lastSurpriseAt = now;
+        s.surprises += 1; // big surprised eyes grow with surprise moments
+        if (s.mode !== 'poker') { popBadge('Whoa!', 'wow'); sfx.wow(); }
+      }
+      s.face = face;
+      scheduleMonster();
     }
-    const now = Date.now();
-    const line = session.voice.onTick({
-      mode: session.mode, happy: detector.level, face, streakMs: now - session.straightSince,
-    }, now);
+    const line = s.voice.onTick({ mode: s.mode, happy: detector.level, face, streakMs: now - s.straightSince }, now);
     if (line) speak(line.text);
   }
+
+  if (f?.blinking?.length) {
+    const wasClosed = s.blink.closed;
+    if (s.blink.push(f.blinking) > 0) {
+      s.eyesClosedUntil = now + 160; // keep very short blinks visible
+      setTimeout(scheduleMonster, 170);
+    }
+    if (s.blink.closed !== wasClosed || s.eyesClosedUntil > now) scheduleMonster();
+  }
+
+  if (f?.talking?.length) {
+    const t = talkingNow(f.talking);
+    if (t !== s.talking) {
+      s.talking = t;
+      if (t) { const line = s.voice.onTalking(now); if (line) speak(line.text); }
+      scheduleMonster();
+    }
+  }
+
+  if (state.settings.breathMirror) {
+    const br = m.breathing;
+    const trace = br?.upperTrace?.length ? br.upperTrace : br?.lowerTrace;
+    if (trace?.length) { s.breath.push(trace); scheduleMonster(); }
+  }
+
   const pr = m.cardio?.pulseRate;
   if (pr?.length && state.settings.showPulse) {
     const v = pr[pr.length - 1].value;
@@ -416,6 +600,7 @@ function handleMetrics(m) {
 
 function buildSdk() {
   const requestedMetrics = [...faceMetrics];
+  if (state.settings.breathMirror) requestedMetrics.push(...breathingMetrics);
   if (state.settings.showPulse) requestedMetrics.push(...cardioMetrics);
 
   if (SIMULATE) return new SimulatedSDK({ requestPulse: state.settings.showPulse });
@@ -438,14 +623,14 @@ function wireSdk(s) {
   });
   s.on('validationStatus', (code, _ts, hint) => {
     let text = HINTS[code] || hint || 'Adjusting...';
-    if (code === ValidationCode.kOk && session?.mode === 'poker') text = 'Looking good. Don\u2019t you dare smile.';
+    if (code === ValidationCode.kOk && session?.mode === 'poker') text = 'Looking good. Don’t you dare smile.';
     setHint(text, code === ValidationCode.kOk ? 'ok' : code === ValidationCode.kCameraTuning ? 'warn' : 'err');
   });
   s.on('metrics', (buf) => {
     try {
       handleMetrics(SIMULATE ? buf : decodeMetrics(buf));
     } catch (err) {
-      console.error('[smile-jar] could not decode metrics', err);
+      console.error('[smile-jar] could not handle metrics', err);
     }
   });
   s.on('error', (code, message, retryable) => {
@@ -466,13 +651,20 @@ async function startSession(mode = 'smile') {
   if (!store.hasConsent(state)) { renderConsent(); show('consent'); return; }
   showError('');
   detector = new SmileDetector();
+  const now = Date.now();
   session = {
-    startedAt: Date.now(),
-    deadline: Date.now() + state.settings.sessionMinutes * 60000,
+    startedAt: now,
+    deadline: now + state.settings.sessionMinutes * 60000,
     smiles: 0,
     before: store.totalSmiles(state),
-    humour: new HumourModel(JOY_REEL),
+    stageAtStart: stageFor(state.monster.smiles),
+    humour: new HumourModel(reelCards()),
     voice: new JarVoice(),
+    signals: new SignalMonitor(),
+    blink: new BlinkTracker(),
+    breath: new BreathNormalizer(),
+    eyesClosedUntil: 0,
+    talking: false,
     toldLearned: false,
     mode,
     face: 'flat',
@@ -480,18 +672,24 @@ async function startSession(mode = 'smile') {
     bestCombo: 0,
     lastSmileAt: -Infinity,
     golden: 0,
-    straightSince: Date.now(),
+    straightSince: now,
     bestStreakMs: 0,
+    diet: {},
+    snack: {},
+    surprises: 0,
+    lastSurpriseAt: -Infinity,
+    evolutions: [],
   };
   const poker = mode === 'poker';
-  $('s-mode').textContent = poker ? 'Try Not to Smile' : 'Smile Session';
+  $('s-mode').textContent = poker ? 'Try Not to Smile' : 'Feed the monster';
   $('s-mode-help').textContent = poker
-    ? 'Keep a straight face. Every time you crack, your sponsors pay up.'
-    : 'Smile when something makes you happy. Every smile drops a coin.';
+    ? 'Keep a straight face. Every crack still feeds the monster, and your sponsors pay.'
+    : 'Smile when something makes you happy. Every smile feeds the monster and drops a coin.';
   $('s-unit').textContent = poker ? 'cracks' : 'smiles';
   $('s-streak').hidden = !poker;
   $('s-badge').hidden = true;
   $('s-speech').hidden = true;
+  $('s-blinks').textContent = '';
   syncMute();
   sfx.start();
   $('pulse-row').hidden = !state.settings.showPulse;
@@ -500,11 +698,13 @@ async function startSession(mode = 'smile') {
   $('clip').hidden = true;
   $('meter-mark').style.left = `${SMILE.onThreshold}%`;
   updateMeter(0);
+  setHint('Starting the SDK...');
   nextCard();
   restartReelTimer();
   show('session');
+  renderMonsterNow();
   renderSession();
-  speak(session.voice.start(mode, Date.now()).text);
+  speak(session.voice.start(mode, now).text);
   session.timer = setInterval(renderSession, 500);
 
   try {
@@ -532,6 +732,8 @@ async function stopSdk() {
   $('cam-live').hidden = true;
 }
 
+const STONE_FACE_MS = 15000; // a Try Not to Smile session with a 15 s straight face adds a stone patch
+
 let ending = false;
 async function endSession() {
   if (!session || ending) return;
@@ -539,6 +741,9 @@ async function endSession() {
   clearInterval(session.timer);
   clearInterval(session.reelTimer);
   const s = session;
+  const now = Date.now();
+  if (s.mode === 'poker') s.bestStreakMs = Math.max(s.bestStreakMs, now - s.straightSince);
+  const signalStatus = s.signals.status(now);
   session = null;
   await stopSdk();
   const clip = $('clip');
@@ -546,54 +751,99 @@ async function endSession() {
   if (clip.src) { URL.revokeObjectURL(clip.src); clip.removeAttribute('src'); }
   $('clip-file').value = '';
 
+  // Commit what the session fed the monster, remembering the deltas so "Don't save" can undo them.
+  const stoneFace = s.mode === 'poker' && s.bestStreakMs >= STONE_FACE_MS ? 1 : 0;
+  const delta = { smiles: s.smiles, diet: { ...s.diet }, snack: { ...s.snack }, surprises: s.surprises, pokerSessions: stoneFace };
+  applyMonsterDelta(delta, 1);
+
+  const sponsors = state.campaign.sponsors;
   const record = {
     id: `x${s.startedAt}`,
     endedAt: new Date().toISOString(),
-    durationMs: Date.now() - s.startedAt,
+    durationMs: now - s.startedAt,
     smiles: s.smiles,
     mode: s.mode,
-    pledgedCents: sessionPledge(state.campaign.sponsors, s.before, s.smiles),
+    pledgedCents: sessionPledge(sponsors, s.before, s.smiles),
   };
   state.sessions.push(record);
   persist();
-  lastSummary = record;
+  lastSummary = { record, delta };
 
-  const goal = Math.max(100, state.campaign.goalCents);
-  const { total } = campaignTotals();
-  $('summary-jar').innerHTML = jarSvg(total / goal, store.totalSmiles(state), 'grin');
-  if (s.mode === 'poker') s.bestStreakMs = Math.max(s.bestStreakMs, Date.now() - s.straightSince);
+  const m = liveMonster(null);
+  const look = monsterLook(m);
+  drawMonster($('summary-monster'), m, { face: 'grin' });
+  $('sum-stage').textContent = `Stage ${look.stage.index + 1} of 4 · ${look.stage.label}`;
+  $('sum-name').textContent = look.name;
+  $('sum-evolved').hidden = s.evolutions.length === 0;
+  $('sum-evolved').textContent = s.evolutions.length
+    ? `It evolved this session: ${[s.stageAtStart.label, ...s.evolutions].join(' → ')}`
+    : '';
+
+  const unit = s.mode === 'poker' ? (record.smiles === 1 ? 'crack' : 'cracks') : (record.smiles === 1 ? 'qualifying smile' : 'qualifying smiles');
   $('sum-smiles').textContent = record.smiles;
-  $('sum-unit').textContent = s.mode === 'poker' ? (record.smiles === 1 ? 'crack' : 'cracks') : (record.smiles === 1 ? 'smile' : 'smiles');
+  $('sum-unit').textContent = unit;
+  $('sum-money').textContent = formatCents(record.pledgedCents);
+  $('sum-cause').textContent = state.campaign.cause;
+
+  // Per sponsor: what this session added to their pledge, and credit for their snack.
+  const sponsorLines = sponsors.map((sp) => {
+    const cents = sponsorOwes(sp, s.before + s.smiles) - sponsorOwes(sp, s.before);
+    const capped = sp.capCents > 0 && sponsorOwes(sp, s.before + s.smiles) >= sp.capCents;
+    return { name: sp.name, color: sp.color, cents, capped, snack: s.snack[sp.id] || 0 };
+  });
+  $('sum-sponsors').innerHTML = sponsorLines.map((l) => `<li><span class="swatch" style="background:${esc(l.color)}"></span>
+    <strong>${esc(l.name)}</strong> pledged ${formatCents(l.cents)}${l.capped ? ' (cap reached)' : ''}${l.snack ? ` · their snack earned ${plural(l.snack, 'smile', 'smiles')}` : ''}</li>`).join('');
+
   const extras = [];
   if (s.mode === 'poker') extras.push(`Longest straight face: ${fmtSecs(s.bestStreakMs)}`);
   if (s.bestCombo > 1) extras.push(`Best combo: x${s.bestCombo}`);
   if (s.golden > 0) extras.push(`Golden grins: ${s.golden}`);
+  if (s.surprises > 0) extras.push(`Surprise moments: ${s.surprises}`);
+  if (signalStatus.blinking.seen) extras.push(`Blinks mirrored: ${s.blink.blinks}`);
   const fav = s.humour.favourite();
   const persona = fav
     ? (s.mode === 'poker' ? `Your weak spot: ${fav.toLowerCase()}s` : `You're ${personaFor(fav)}`)
     : (s.mode === 'poker' ? 'Unbreakable. Nothing cracked you.' : '');
-  $('sum-extras').textContent = extras.join(' \u00b7 ');
+  $('sum-extras').textContent = extras.join(' · ');
   $('sum-persona').textContent = persona;
+
+  const totalSmiles = store.totalSmiles(state);
   lastReceipt = {
-    title: s.mode === 'poker' ? 'Try Not to Smile' : 'Smile Session',
-    headline: `${record.smiles} ${$('sum-unit').textContent}`,
+    title: s.mode === 'poker' ? 'Try Not to Smile' : 'Feed the monster',
+    monsterSvg: drawMonster(null, m, { face: 'grin' }, true),
+    monsterName: look.name,
+    stageLabel: `${look.stage.label} (stage ${look.stage.index + 1} of 4)`,
+    headline: `${record.smiles} ${unit}`,
     pledged: formatCents(record.pledgedCents),
     cause: state.campaign.cause,
+    sponsors: sponsorLines.map((l) => ({ name: l.name, color: l.color, amount: formatCents(l.cents), note: l.snack ? `snack: ${plural(l.snack, 'smile', 'smiles')}` : l.capped ? 'cap reached' : '' })),
+    campaignPledged: formatCents(pledgeFor(sponsors, totalSmiles).total),
+    campaignConfirmed: formatCents(confirmedTotal(sponsors)),
     lines: extras,
     persona,
-    jarSvg: jarSvg(total / goal, store.totalSmiles(state), 'grin', true),
     date: new Date(),
   };
   $('receipt-preview').hidden = true;
-  $('sum-money').textContent = formatCents(record.pledgedCents);
-  $('sum-cause').textContent = state.campaign.cause;
-  $('sum-detail').textContent = `The jar now holds ${formatCents(total)} of your ${formatCents(goal)} goal.`;
   show('summary');
+  if (s.evolutions.length) sfx.evolve();
   ending = false;
 }
 $('btn-end').addEventListener('click', endSession);
 
-let lastReceipt = null;
+function applyMonsterDelta(d, sign) {
+  const m = state.monster;
+  m.smiles = Math.max(0, m.smiles + sign * d.smiles);
+  for (const [k, n] of Object.entries(d.diet)) m.diet[k] = Math.max(0, (m.diet[k] || 0) + sign * n);
+  m.snackBy ||= {};
+  for (const [id, n] of Object.entries(d.snack)) {
+    m.snackBy[id] = Math.max(0, (m.snackBy[id] || 0) + sign * n);
+    const sp = state.campaign.sponsors.find((x) => x.id === id);
+    if (sp) sp.snackSmiles = Math.max(0, (sp.snackSmiles || 0) + sign * n);
+  }
+  m.surprises = Math.max(0, m.surprises + sign * d.surprises);
+  m.pokerSessions = Math.max(0, m.pokerSessions + sign * d.pokerSessions);
+}
+
 $('btn-receipt').addEventListener('click', async () => {
   if (!lastReceipt) return;
   const blob = await drawReceipt(lastReceipt);
@@ -612,12 +862,16 @@ $('btn-receipt').addEventListener('click', async () => {
 });
 $('btn-done').addEventListener('click', () => { renderHome(); show('home'); });
 $('btn-discard').addEventListener('click', () => {
-  if (lastSummary) state.sessions = state.sessions.filter((x) => x.id !== lastSummary.id);
+  if (lastSummary) {
+    state.sessions = state.sessions.filter((x) => x.id !== lastSummary.record.id);
+    applyMonsterDelta(lastSummary.delta, -1);
+  }
   lastSummary = null;
+  lastReceipt = null;
   persist();
   renderHome();
   show('home');
-  toast('Session removed.');
+  toast('Session removed. The monster spat it out.');
 });
 
 // ---------------------------------------------------------------- privacy
@@ -635,9 +889,11 @@ $('pv-telemetry-toggle').addEventListener('change', (e) => {
   toast('Applies from your next session.');
 });
 $('btn-wipe').addEventListener('click', async () => {
-  if (!confirm('Delete your consent, campaign, sponsors and every session total from this device?')) return;
+  if (!confirm('Delete your consent, monster, campaign, sponsors and every session total from this device?')) return;
   if (session) { clearInterval(session.timer); clearInterval(session.reelTimer); session = null; await stopSdk(); }
   state = store.wipe();
+  lastSummary = null;
+  lastReceipt = null;
   dlg.close();
   renderConsent();
   show('consent');

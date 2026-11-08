@@ -37,6 +37,8 @@ export const sfx = {
   combo(n) { tone(660 + Math.min(n, 8) * 90, 0, 0.12, { type: 'square', gain: 0.06 }); },
   crack() { tone(520, 0, 0.35, { type: 'sawtooth', gain: 0.08, slideTo: 140 }); tone(1320, 0.05, 0.12, { type: 'triangle' }); },
   wow() { tone(300, 0, 0.3, { type: 'sine', gain: 0.12, slideTo: 900 }); },
+  evolve() { [392, 523, 659, 784, 1047].forEach((f, i) => tone(f, i * 0.09, 0.35, { type: 'triangle', gain: 0.14 })); tone(220, 0, 0.6, { type: 'sine', gain: 0.1, slideTo: 880 }); },
+  snack() { tone(880, 0, 0.1, { type: 'square', gain: 0.05 }); tone(1175, 0.08, 0.16, { type: 'triangle', gain: 0.12 }); },
   start() { tone(523, 0, 0.12); tone(659, 0.1, 0.12); tone(784, 0.2, 0.2); },
 };
 

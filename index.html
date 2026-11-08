@@ -5,18 +5,18 @@
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <meta http-equiv="Content-Security-Policy"
         content="default-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob:; worker-src 'self' blob:; media-src 'self' blob:; connect-src 'self' blob:; frame-src 'none'; object-src 'none';">
-  <title>Smile Jar</title>
+  <title>Smile Jar: The Smile Monster</title>
   <link rel="stylesheet" href="./styles.css">
 </head>
 <body>
   <div id="sim-banner" class="sim-banner" hidden>
-    SIMULATED SIGNAL: the SmartSpectra SDK is not running in this build. Hold Space to smile, G for a big grin, W for surprise.
+    SIMULATED SIGNALS: the SmartSpectra SDK is not running in this build. Space = smile, G = big grin, W = surprise, B = blink, T = talk. Breathing is a fake sine wave.
   </div>
 
   <header class="topbar">
     <div class="brand">
       <svg class="brand-mark" viewBox="0 0 32 32" aria-hidden="true"><rect x="7" y="4" width="18" height="4" rx="1.5"/><path d="M8 9h16v15a5 5 0 0 1-5 5h-6a5 5 0 0 1-5-5z"/><path class="smile" d="M12 19c1.2 2 6.8 2 8 0" fill="none"/></svg>
-      <span>Smile Jar</span>
+      <span>Smile Jar <em class="brand-sub">The Smile Monster</em></span>
     </div>
     <nav class="topnav">
       <button type="button" class="link" id="nav-privacy">Privacy &amp; data</button>
@@ -26,15 +26,15 @@
   <!-- 1. Consent ------------------------------------------------------------ -->
   <main id="view-consent" class="view consent" hidden>
     <section class="card consent-card">
-      <h1>Before we open the jar</h1>
-      <p class="lede">Smile Jar turns your smiles into pledges for a cause. To count smiles it needs your camera, so here is exactly what happens.</p>
+      <h1>Before you wake the monster</h1>
+      <p class="lede">A Smile Monster lives in this jar. It grows when you smile, and your sponsors pledge money to a charity for every smile. To see you, it needs your camera, so here is exactly what happens.</p>
       <ul class="facts">
-        <li><strong>The camera is only on during a Smile Session.</strong> It starts when you press Start and turns off when the session ends. Your system camera light will show it.</li>
-        <li><strong>Nothing is recorded.</strong> Video frames are analysed live by the Presage SmartSpectra SDK on this computer and then discarded. No video, photos, face data or expression scores are saved or sent anywhere.</li>
-        <li><strong>Only totals are saved, on this device.</strong> For each session we keep the date, length and number of smiles, so the jar can add up pledges. You can export or delete this any time.</li>
+        <li><strong>The camera is only on during a session.</strong> It starts when you press Start and turns off when the session ends. Your system camera light will show it.</li>
+        <li><strong>Nothing is recorded.</strong> Video frames are analysed live by the Presage SmartSpectra SDK on this computer and then discarded. The monster copies your expressions, blinks, talking and (if turned on) breathing as they happen, but none of those signals are saved or sent anywhere by Smile Jar.</li>
+        <li><strong>Only totals are saved, on this device.</strong> Smile counts, which joke categories made you smile, sponsor names, their jokes and pledges. You can export or delete this any time.</li>
         <li><strong>The SDK contacts Presage to check the API key</strong> and, only if you allow it below, to send an anonymous diagnostics summary (no video, no measurements, no identifiers).</li>
         <li><strong>It is a game, not a health tool.</strong> Smile Jar makes no medical or emotional assessment of anyone.</li>
-        <li><strong>Only count your own smiles</strong>, or those of people who have agreed to take part and are in front of the camera knowingly.</li>
+        <li><strong>Only play with people who agreed.</strong> Count your own smiles, or those of people who knowingly take part in front of the camera.</li>
       </ul>
       <label class="check">
         <input type="checkbox" id="consent-telemetry">
@@ -45,27 +45,48 @@
         <span>I understand how Smile Jar uses the camera and I agree to use it only with people who have consented.</span>
       </label>
       <div class="actions">
-        <button type="button" class="primary" id="consent-accept" disabled>Open the jar</button>
+        <button type="button" class="primary" id="consent-accept" disabled>Wake the monster</button>
       </div>
     </section>
   </main>
 
   <!-- 2. Home -------------------------------------------------------------- -->
   <main id="view-home" class="view home" hidden>
-    <section class="card jar-card">
-      <div class="jar-wrap" id="home-jar"></div>
-      <div class="jar-stats">
-        <div class="eyebrow">Raising for</div>
-        <div class="cause" id="home-cause">Cause</div>
-        <div class="big-money" id="home-total">$0.00</div>
-        <div class="muted"><span id="home-smiles">0</span> smiles so far &middot; goal <span id="home-goal">$25.00</span></div>
+    <section class="card hero">
+      <div class="monster-wrap" id="home-monster"></div>
+      <div class="hero-text">
+        <div class="eyebrow" id="home-stage">Egg</div>
+        <h1 class="monster-name" id="home-name">Mystery Egg</h1>
+        <div class="stage-bar"><div class="stage-fill" id="home-stage-fill"></div></div>
+        <div class="muted small" id="home-next"></div>
+        <div class="muted small" id="home-diet"></div>
+
+        <div class="money-row">
+          <div><div class="eyebrow">Pledged for <span id="home-cause">a cause</span></div><div class="big-money" id="home-total">$0.00</div></div>
+          <div><div class="eyebrow">Confirmed donated</div><div class="mid-money" id="home-confirmed">$0.00</div></div>
+        </div>
+        <div class="muted small"><span id="home-smiles">0</span> qualifying smiles &middot; goal <span id="home-goal">$25.00</span> &middot; <span id="home-rate"></span></div>
         <div class="progress"><div class="progress-fill" id="home-progress"></div></div>
-        <div class="muted small" id="home-rate"></div>
         <div class="start-row">
-          <button type="button" class="primary big" id="btn-new-session">Start a Smile Session</button>
+          <button type="button" class="primary big" id="btn-new-session">Feed the monster</button>
           <button type="button" class="big ghost" id="btn-poker-session">Try Not to Smile</button>
         </div>
-        <div class="muted small">Try Not to Smile: keep a straight face while the jokes roll. Every time you crack, your sponsors pay.</div>
+        <div class="muted small">Try Not to Smile: keep a straight face while the jokes roll. Every crack still feeds the monster, and your sponsors pay.</div>
+      </div>
+    </section>
+
+    <section class="card">
+      <h2>Sponsors &amp; their snacks</h2>
+      <p class="muted small">Sponsors promise an amount per qualifying smile, up to a cap. Each sponsor can add a <strong>snack</strong>: a joke or memory the monster will serve you. If their snack makes you smile, they get the credit and the monster grows a heart in their colour. Smile Jar never takes payment: sponsors donate to the charity themselves, and you record confirmed donations here.</p>
+      <div class="table-scroll">
+        <table class="sponsors">
+          <thead><tr><th>Sponsor</th><th>&cent; / smile</th><th>Cap ($)</th><th>Snack joke</th><th>Pledged</th><th>Donated ($)</th><th></th></tr></thead>
+          <tbody id="sponsor-rows"></tbody>
+        </table>
+      </div>
+      <div class="actions left">
+        <button type="button" id="btn-add-sponsor">Add sponsor</button>
+        <button type="button" id="btn-export">Export pledge statement (CSV)</button>
       </div>
     </section>
 
@@ -73,7 +94,7 @@
       <h2>Campaign</h2>
       <div class="grid2">
         <label class="field">
-          <span>Cause</span>
+          <span>Charity / cause</span>
           <input id="f-cause" list="cause-presets" maxlength="80">
           <datalist id="cause-presets">
             <option value="Local food bank"><option value="Animal shelter"><option value="Children's hospital">
@@ -88,28 +109,26 @@
           <span>Session length (minutes)</span>
           <input id="f-minutes" type="number" min="1" max="15" step="1">
         </label>
-        <label class="check inline">
-          <input type="checkbox" id="f-pulse">
-          <span>Also show live pulse during sessions (needs a cardio-enabled API key; just for fun)</span>
-        </label>
-      </div>
-
-      <h3>Sponsors</h3>
-      <p class="muted small">Friends, family or coworkers who promise to donate for each smile. Smile Jar never takes payment: it gives you a pledge statement to send them.</p>
-      <table class="sponsors">
-        <thead><tr><th>Name</th><th>Cents per smile</th><th>Cap ($, optional)</th><th>Owes now</th><th></th></tr></thead>
-        <tbody id="sponsor-rows"></tbody>
-      </table>
-      <div class="actions left">
-        <button type="button" id="btn-add-sponsor">Add sponsor</button>
-        <button type="button" id="btn-export">Export pledge statement (CSV)</button>
+        <div class="checks">
+          <label class="check inline">
+            <input type="checkbox" id="f-breath">
+            <span>Monster breathes with you (uses the SDK breathing signal; sit so your chest is visible)</span>
+          </label>
+          <label class="check inline">
+            <input type="checkbox" id="f-pulse">
+            <span>Show live pulse (needs a cardio-enabled API key; just for fun)</span>
+          </label>
+        </div>
       </div>
     </section>
 
     <section class="card">
       <h2>Sessions</h2>
       <ol class="history" id="history"></ol>
-      <p class="muted small" id="history-empty">No sessions yet. Your first one is a press away.</p>
+      <p class="muted small" id="history-empty">No sessions yet. The egg is waiting.</p>
+      <div class="actions left">
+        <button type="button" class="link danger-link" id="btn-reset-monster">Start a new monster</button>
+      </div>
     </section>
   </main>
 
@@ -117,8 +136,9 @@
   <main id="view-session" class="view session" hidden>
     <section class="stage">
       <div class="reel card" id="reel">
-        <div class="mode-head"><strong id="s-mode">Smile Session</strong> <span class="muted small" id="s-mode-help"></span></div>
+        <div class="mode-head"><strong id="s-mode">Feed the monster</strong> <span class="muted small" id="s-mode-help"></span></div>
         <div class="reel-kind" id="reel-kind">Joke</div>
+        <div class="reel-from" id="reel-from" hidden></div>
         <div class="reel-text" id="reel-text">Loading something nice...</div>
         <div class="reel-why" id="reel-why"></div>
         <video id="clip" class="clip" controls hidden></video>
@@ -133,32 +153,41 @@
       </div>
 
       <aside class="side">
-        <div class="cam card">
-          <video id="preview" autoplay playsinline muted></video>
-          <div class="cam-placeholder" id="cam-placeholder">Camera off</div>
-          <div class="cam-live" id="cam-live" hidden><span class="dot"></span> Camera on, nothing recorded</div>
-          <div class="hint" id="hint">Starting the SDK...</div>
-        </div>
-
-        <div class="card meter-card">
-          <div class="meter-label">
-            <span>Live smile signal <em>(SmartSpectra expressions, HAPPY)</em></span>
-            <span id="meter-value">0%</span>
+        <div class="card monster-card" id="monster-card">
+          <div class="speech" id="s-speech" role="status" hidden></div>
+          <div class="badge" id="s-badge" hidden></div>
+          <div class="monster-wrap big" id="s-monster"></div>
+          <div class="monster-meta">
+            <strong id="s-name">Mystery Egg</strong>
+            <span class="muted small" id="s-stage">Egg</span>
           </div>
-          <div class="meter"><div class="meter-fill" id="meter-fill"></div><div class="meter-mark" id="meter-mark"></div></div>
-          <div class="pulse" id="pulse-row" hidden>Live pulse <strong id="pulse-value">--</strong> BPM <em>(for fun only)</em></div>
+          <div class="stage-bar"><div class="stage-fill" id="s-stage-fill"></div></div>
         </div>
 
-        <div class="card session-jar">
-          <div class="jar-wrap small" id="session-jar"></div>
-          <div>
+        <div class="duo">
+          <div class="cam card">
+            <video id="preview" autoplay playsinline muted></video>
+            <div class="cam-placeholder" id="cam-placeholder">Camera off</div>
+            <div class="cam-live" id="cam-live" hidden><span class="dot"></span> Live, not recorded</div>
+            <div class="hint" id="hint">Starting the SDK...</div>
+          </div>
+          <div class="card stats">
             <div class="big-count"><span id="s-smiles">0</span> <small id="s-unit">smiles</small></div>
             <div class="money" id="s-money">$0.00 pledged</div>
             <div class="muted small" id="s-timer">2:00 left</div>
             <div class="small streak" id="s-streak" hidden></div>
+            <div class="small" id="s-blinks"></div>
           </div>
-          <div class="badge" id="s-badge" hidden></div>
-          <div class="speech" id="s-speech" role="status" hidden></div>
+        </div>
+
+        <div class="card meter-card">
+          <div class="meter-label">
+            <span>HAPPY <em>(SmartSpectra expressions)</em></span>
+            <span id="meter-value">0%</span>
+          </div>
+          <div class="meter"><div class="meter-fill" id="meter-fill"></div><div class="meter-mark" id="meter-mark"></div></div>
+          <div class="signals" id="signal-chips" aria-label="Live SmartSpectra signals"></div>
+          <div class="pulse" id="pulse-row" hidden>Live pulse <strong id="pulse-value">--</strong> BPM <em>(for fun only)</em></div>
         </div>
 
         <div class="error" id="error" hidden></div>
@@ -173,13 +202,17 @@
   <!-- 4. Summary ----------------------------------------------------------- -->
   <main id="view-summary" class="view summary" hidden>
     <section class="card summary-card">
-      <div class="jar-wrap" id="summary-jar"></div>
-      <h1><span id="sum-smiles">0</span> <span id="sum-unit">smiles</span>, <span id="sum-money">$0.00</span> for <span id="sum-cause">a good cause</span></h1>
-      <p class="muted" id="sum-detail"></p>
+      <div class="monster-wrap big" id="summary-monster"></div>
+      <div class="eyebrow" id="sum-stage">Stage</div>
+      <h1 class="monster-name" id="sum-name">Mystery Egg</h1>
+      <p class="evolved" id="sum-evolved" hidden></p>
+      <h2><span id="sum-smiles">0</span> <span id="sum-unit">smiles</span>, <span id="sum-money">$0.00</span> pledged for <span id="sum-cause">a good cause</span></h2>
+      <p class="muted small">Pledged means promised. It becomes a donation when your sponsors give to the charity, and you can mark it as donated on the home screen.</p>
+      <ul class="sum-sponsors" id="sum-sponsors"></ul>
       <p class="extras" id="sum-extras"></p>
       <p class="persona" id="sum-persona"></p>
       <img id="receipt-preview" class="receipt-preview" alt="Your Smile Receipt" hidden>
-      <p class="muted small">Camera is off. Only this session's date, length and smile count were saved on this device.</p>
+      <p class="muted small">Camera is off. Only totals were saved on this device.</p>
       <div class="actions">
         <button type="button" id="btn-discard">Don't save this session</button>
         <button type="button" class="ghost" id="btn-receipt">Save Smile Receipt</button>
@@ -191,8 +224,9 @@
   <!-- Privacy dialog ------------------------------------------------------- -->
   <dialog id="privacy" class="privacy">
     <h2>Privacy &amp; data</h2>
-    <p><strong>Camera:</strong> used only while a Smile Session runs. Frames go from the camera to the SmartSpectra SDK in this app and are discarded after analysis. Nothing is recorded or uploaded.</p>
-    <p><strong>Saved on this device:</strong> your consent date, settings, cause, sponsor names and rates, and per-session totals (date, length, smile count, pledged amount). Nothing else.</p>
+    <p><strong>Camera:</strong> used only while a session runs. Frames go from the camera to the SmartSpectra SDK in this app and are discarded after analysis. Nothing is recorded or uploaded by Smile Jar.</p>
+    <p><strong>Signals used live, never saved:</strong> expressions (HAPPY, SURPRISE), blinking, talking, breathing trace (if "breathes with you" is on) and pulse (if turned on).</p>
+    <p><strong>Saved on this device:</strong> consent date, settings, cause and goal, sponsor names, rates, caps, snack jokes and confirmed donations you entered, the monster's diet (smile counts per joke category, surprise moments, Try Not to Smile sessions), and per-session totals.</p>
     <p><strong>Network:</strong> the SDK contacts Presage to validate the API key. Anonymous SDK diagnostics are <span id="pv-telemetry">off</span>. Smile Jar itself has no server, analytics or AI service.</p>
     <p><strong>Retention:</strong> kept until you delete it. Deleting removes all of it and returns you to the consent screen.</p>
     <label class="check">
