@@ -9,6 +9,8 @@ cover_image:
 
 ## What I Built
 
+> Walking can donate your steps. Recycling can earn you points. So why can't a smile raise money too?
+
 **Smile Jar** is a desktop fundraiser powered by your face. Friends, family or coworkers pledge an amount per smile, like 10¢ a smile capped at $10. You sit down for a two-minute Smile Session of jokes, tiny happy facts or an uplifting clip of your own, and the SmartSpectra SDK's live facial-expression signal counts every real smile into a jar for the cause you picked. When you're done, you export a pledge statement and send it to your sponsors, who donate directly to the cause.
 
 It's like a sponsored fun run, except the only thing you have to stretch is your cheeks.
@@ -75,7 +77,7 @@ sdk.on('metrics', (buf) => {
 
 **Most Creative or Delightful Use.**
 
-Most camera-vitals demos point the camera at you to measure something. Smile Jar flips that around and makes your smile the thing that does good. The inspiration was sponsored fun runs: people love backing a friend's effort, but running isn't for everyone. Smiling is something almost anyone can do from their desk, and it's contagious. The playful parts are a jar that pulls the same face as you and trash-talks you, a joke reel that figures out your sense of humour from your smiles, golden coins and combos, a Smile Receipt to brag with, and the Try Not to Smile mode, where your sponsors are rooting for you to fail. Smiling for charity turns out to be hard to do with a straight face.
+Most camera-vitals demos point the camera at you to measure something. Smile Jar flips that around and makes your smile the thing that does good. The inspiration came from apps that already turn everyday actions into good: step-counting apps donate for every walk, and recycling apps reward every bottle you return. Smiling felt like the missing one. It's free, almost anyone can do it, and it's contagious. Like a sponsored fun run, people love backing a friend's effort, but here nobody has to run. Smiling is something almost anyone can do from their desk, and it's contagious. The playful parts are a jar that pulls the same face as you and trash-talks you, a joke reel that figures out your sense of humour from your smiles, golden coins and combos, a Smile Receipt to brag with, and the Try Not to Smile mode, where your sponsors are rooting for you to fail. Smiling for charity turns out to be hard to do with a straight face.
 
 ## Consent and Data Handling
 
