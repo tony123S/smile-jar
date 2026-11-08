@@ -1,5 +1,5 @@
 ---
-title: Smile Jar: every smile you crack puts money in a charity jar
+title: Smile Jar - every smile puts money in a charity jar
 published: false
 tags: presagechallenge, devchallenge, electron, javascript
 cover_image:
@@ -9,27 +9,20 @@ cover_image:
 
 ## What I Built
 
-> Walking can donate your steps. Recycling can earn you points. So why can't a smile raise money too?
+Walking can donate your steps. Recycling can earn you points. So why can't a smile raise money too?
 
-**Smile Jar** is a desktop fundraiser powered by your face. Friends, family or coworkers pledge an amount per smile, like 10¢ a smile capped at $10. You sit down for a two-minute Smile Session of jokes, tiny happy facts or an uplifting clip of your own, and the SmartSpectra SDK's live facial-expression signal counts every real smile into a jar for the cause you picked. When you're done, you export a pledge statement and send it to your sponsors, who donate directly to the cause.
+That's the idea behind **Smile Jar**. Your friends or family pledge some money for every smile, say 10 cents a smile up to $10. Then you sit in front of your laptop for two minutes while the app shows you jokes and cute animal facts. Every time you smile, the SmartSpectra SDK picks it up from the camera and a coin drops into the jar. At the end you get a pledge list to send to your sponsors, and they donate straight to the charity.
 
-It's like a sponsored fun run, except the only thing you have to stretch is your cheeks.
+Basically a sponsored fun run, but the only thing you exercise is your cheeks 😄
 
-There are two ways to play:
+You can play it two ways:
 
-- **Smile Session:** smile at jokes and happy facts, and every smile drops a coin.
-- **Try Not to Smile:** keep a straight face while the jokes roll. Every time you crack, your sponsors pay up. Losing is how you win.
+- **Smile Session** - smile at the jokes and fill the jar.
+- **Try Not to Smile** - keep a straight face while the jokes keep coming. Every time you crack, your sponsors pay. You win by losing!
 
-- Pick a cause and set a goal
-- Add sponsors with a rate per smile and an optional cap
-- Run a session: a live smile meter, a coin drops into the jar for each smile, and the total updates as you go
-- Export a CSV pledge statement for your sponsors
-
-No login, no payments, no server.
+No login, no payments, no server. Everything runs on your own computer.
 
 ## Demo
-
-<!-- Embed your demo video. Suggested flow: consent screen → home → session with the live smile signal bar and SDK hint → coins dropping → summary → export CSV → Privacy & data → Delete all my data. -->
 
 {% embed VIDEO_URL %}
 
@@ -37,90 +30,79 @@ No login, no payments, no server.
 
 {% github tony123S/smile-jar %}
 
-Setup takes three steps: `npm install`, add your SmartSpectra API key to `.env`, then `npm start`. The README has full setup instructions and a step-by-step testing guide for judges. No login is needed.
+To run it: `npm install`, put your SmartSpectra API key in a `.env` file, then `npm start`. The README has the full steps and a short testing guide for judges. There's no login.
 
 ## How It Responds to Human Signals
 
-**Signal used: expressions.** Smile Jar uses the SmartSpectra Node.js/Electron SDK (`@smartspectra/node-sdk`). The renderer-side `SmartSpectraSDK` opens the camera, and the main process runs the analysis on-device through `bindSmartSpectraIpc`. I request the SDK's face bundle (which includes `EXPRESSIONS`) and decode every `metrics` event:
+Smile Jar uses the **expressions** signal from the SmartSpectra Node.js/Electron SDK. The SDK gives a live score for each expression, and I mostly use the HAPPY score (plus SURPRISE for one fun effect).
+
+The setup is pretty small:
 
 ```js
 const sdk = new SmartSpectraSDK({
   apiKey: API_KEY,
-  requestedMetrics: [...faceMetrics],   // + cardioMetrics if pulse is switched on
-  enableTelemetry: false,               // opt-in only, see Consent and Data Handling
+  requestedMetrics: [...faceMetrics],   // add cardioMetrics if pulse is on
+  enableTelemetry: false,               // only on if the user opts in
 });
 
 sdk.on('metrics', (buf) => {
   const m = decodeMetrics(buf);
   for (const e of m.face?.expression ?? []) {
-    // e = { stable, timestamp, scores: [{ type, confidence }] }
     if (detector.pushExpressions([e])) dropCoinIntoJar();
   }
 });
 ```
 
-**How the experience responds in real time:**
+The HAPPY score jumps around a lot, so I didn't want every little twitch to count. A smile only counts if the score stays above 60% for half a second. Then you have to relax your face before the next one can count. So one long grin is one coin, and you can't cheat by holding a smile forever.
 
-- **Smile meter.** A bar shows the live HAPPY score from the SDK, with a marker at the counting threshold. You can watch it climb as a joke lands.
-- **A jar that copies your face.** The jar mascot grins when your HAPPY score is high and drops its jaw when the SDK sees SURPRISE, live, so you can literally see the signal.
-- **Combos and golden coins.** Smiles within a few seconds of each other build a combo, and a huge grin (HAPPY at 92% or more) drops a golden coin. These are just for fun; every smile is worth the same pledge.
-- **Try Not to Smile.** The same signal flips into a game: a "straight face" timer runs until the SDK catches you smiling, then resets with a "You cracked!" badge.
-- **A jar that talks back.** Every smile clinks into the jar with a speech-bubble reaction. In Try Not to Smile, the jar watches your live HAPPY score and teases you as it creeps toward the threshold ("Don't you dare..."), then gloats "GOTCHA!" the moment the SDK catches you.
-- **Jokes that learn your humour.** Cards come in four kinds: puns, animal facts, memories and picture-this. Each counted smile is credited to the card that was on screen when the smile *started*, and the reel samples the next card from what's working, so it shows "Picked for you: you smile at animal facts". In Try Not to Smile it uses the same model to hunt for your weak spot. The live signal is literally choosing the content.
-- **A shareable Smile Receipt.** At the end you can save a PNG receipt with the jar, your total, best combo and humour type ("You're an animal lover") to send to sponsors. It never contains a picture of you.
-- **Coins in the jar.** When a smile counts, a coin showing what that smile was worth ("+15¢") drops into the jar, and the session total and jar fill update immediately. Once a sponsor hits their cap, the next smile is worth less, and the app tells you.
-- **Counting only real smiles.** The raw score jumps around, so `SmileDetector` adds hysteresis. A smile counts when HAPPY stays at or above 60% for half a second on stable samples. The detector re-arms only after HAPPY falls below 35% for 0.7 seconds. One long grin counts once, a flicker doesn't count, and you can't farm the jar by holding a smile. The detector is plain JavaScript with unit tests that feed it SDK-shaped expression samples.
-- **Coaching from the SDK.** `validationStatus` codes (no face, too dark, face too far, and so on) become friendly hints over the camera preview, so you know when the signal is reliable.
-- **Optional pulse.** With a cardio-enabled key you can switch on live `PULSE_RATE` next to the smile meter, just for fun. It's never stored.
+Here's what happens on screen while you play:
+
+- **Smile meter** - a bar shows your live HAPPY score, so you can watch it go up as a joke lands.
+- **The jar copies your face** - it grins when you smile and drops its jaw when you look surprised.
+- **The jar talks** - it says things when you smile, and in Try Not to Smile it teases you as your score creeps up ("Don't you dare..."), then yells "GOTCHA!" when you crack.
+- **Jokes that learn what you like** - there are puns, animal facts, memories and "picture this" cards. The app notices which kind made you smile and shows you more of those. In Try Not to Smile it uses this to find your weak spot.
+- **Combos and golden coins** - smile a few times in a row for a combo, or give a really big grin for a golden coin. These are just for fun, every smile is worth the same.
+- **Smile Receipt** - at the end you can save a picture with your score, best combo and humour type ("You're an animal lover") to send to your sponsors. It never includes your face.
+- **Helpful hints** - if the SDK can't see you well, the app tells you in plain words, like "It's a bit dark. Add some light."
+- **Pulse (optional)** - if your API key supports it, you can show your live pulse next to the smile meter, just for fun.
 
 ## Prize Categories
 
-I'm entering **both** categories: **Most Creative or Delightful Use** and **Best Thoughtful Real-World Use**.
+I'm entering both: **Most Creative or Delightful Use** and **Best Thoughtful Real-World Use**.
 
 ### Most Creative or Delightful Use
 
-Most camera-vitals demos point the camera at you to measure something. Smile Jar flips that around and makes your smile the thing that does good. The inspiration came from apps that already turn everyday actions into good: step-counting apps donate for every walk, and recycling apps reward every bottle you return. Smiling felt like the missing one. It's free, almost anyone can do it, and it's contagious.
+Most camera demos measure you. I wanted to flip that so your smile is what does something good. There are already apps that donate for your steps or reward you for recycling, and smiling felt like the obvious missing one. It's free, almost anyone can do it, and it spreads.
 
-What makes it playful:
-
-- A jar that pulls the same face as you, and trash-talks you as your smile signal rises
-- A joke reel that figures out your sense of humour from your smiles
-- Golden coins, combos and a Smile Receipt to brag with
-- **Try Not to Smile**, where your sponsors are rooting for you to fail
-
-Smiling for charity turns out to be very hard to do with a straight face.
+The fun parts are the jar that copies your face and talks back, the jokes that figure out your sense of humour, and Try Not to Smile, where your sponsors are hoping you fail. It's surprisingly hard to keep a straight face when you know it's for charity.
 
 ### Best Thoughtful Real-World Use
 
-**The need.** Small fundraisers (a school class, an office team, a family raising money for a local food bank or animal shelter) usually rely on sponsored runs, bake sales or walks. Those take time, money, organizing, and a body that can run or walk. Smile Jar gives them a sponsored challenge anyone can do in two minutes at a desk, including people who can't do a fun run.
+Small fundraisers, like a school class, an office team or a family raising money for a food bank, usually do runs, walks or bake sales. Those take time, planning and money, and not everyone can run. Smile Jar is a sponsored challenge you can do in two minutes at your desk, and it works for people who can't do a fun run.
 
-**Who it's for.** Kids and parents doing a class fundraiser, coworkers doing a charity week, and anyone who wants friends to back them for a cause.
+I tried to keep it simple for those people:
 
-**How it's designed to be usable for them:**
-
-- **No account, no login, no payments.** Pick a cause, add sponsors, press Start. Sponsors donate directly to the charity, using the exported pledge statement, so Smile Jar never touches money.
-- **Fair, understandable pledges.** Sponsors set a rate per smile and a cap, so nobody is surprised by the total. The app shows what the next smile is worth.
-- **Plain-language coaching.** SDK validation codes become simple hints like "It's a bit dark. Add some light."
-- **Consent first.** The camera can't turn on until the user has read and agreed to how it's used, and it only runs during a session. Nothing is recorded, totals stay on the device, and one button deletes everything (details below).
-- **No health claims.** It counts smiles for a game and makes no judgement about anyone's health or feelings.
+- No account and no payments. Pick a cause, add sponsors, press Start. Sponsors donate to the charity themselves, so the app never handles money.
+- Sponsors set an amount per smile and a limit, so nobody gets a surprise bill.
+- Hints are in plain language instead of error codes.
+- The camera can't turn on until you agree to how it's used, and nothing is recorded.
+- It's a game. It doesn't say anything about your health or feelings.
 
 ## Consent and Data Handling
 
-- **Camera consent:** the app opens on a consent screen that explains how the camera is used and requires an explicit tick before anything else works. The camera opens only when you press Start a Smile Session and is released when the session ends. A "Camera on, nothing recorded" badge shows while it's live. Electron grants video only (never the microphone) and only to the app's own page.
-- **Only consenting people:** the consent text asks you to count only your own smiles or those of people who knowingly agreed. Smile Jar isn't designed for, and must not be used for, covert or non-consensual monitoring.
-- **Processing:** frames go from the camera to the SmartSpectra SDK inside the app, are analysed on-device, and are discarded. Smile Jar reads the expression scores (and pulse, if enabled) in memory only.
-- **Storage:** one local record on your device with your consent date, settings, cause, sponsor names/rates and per-session totals (date, length, smile count, pledged amount). No video, images, face data, expression scores or pulse values are ever saved.
-- **Sharing:** none. There's no backend, account, analytics or ads. The only thing that leaves the app is the CSV pledge statement, and only when you export and send it yourself.
-- **Humour profile and receipt:** which kind of card made you smile is kept in memory for the current session only. The Smile Receipt image is made on your device only when you click Save and contains totals, never a picture of you.
-- **Retention and deletion:** data is kept until you delete it. Privacy & data → Delete all my data wipes everything, including consent. Any single session can be discarded from its summary screen.
-- **SDK telemetry:** the SDK connects to Presage to validate the API key. Its aggregate diagnostics summary (no video, no measurements, no identifiers, per Presage's docs) is on by default in the SDK, but Smile Jar turns it off unless you opt in.
+- **Camera consent:** the first screen explains how the camera is used, and you have to tick a box before you can do anything. The camera only turns on when you start a session and turns off when it ends. A "Camera on, nothing recorded" label shows while it's on. The app only asks for the camera, never the microphone.
+- **Only with people who agree:** the consent screen asks you to only count your own smiles, or smiles of people who know and agree. It must not be used to watch anyone secretly.
+- **Processing:** camera frames go to the SmartSpectra SDK inside the app, get analysed on your computer, and are thrown away. Smile Jar only reads the expression scores (and pulse if you turn it on), and only in memory.
+- **What's saved:** one small record on your computer with your consent date, settings, cause, sponsor names and amounts, and a total for each session (date, length, number of smiles, amount pledged). No video, photos, face data, expression scores or pulse values are ever saved.
+- **Sharing:** nothing is shared. There's no server, account, analytics or ads. The only thing that leaves the app is the pledge list or Smile Receipt, and only if you save and send it yourself.
+- **Humour profile and receipt:** which kind of joke made you smile is only kept until the session ends. The Smile Receipt is made on your computer when you click Save, and it has your totals, never a picture of you.
+- **Keeping and deleting:** your data stays until you delete it. "Delete all my data" in Privacy & data wipes everything, including your consent. You can also throw away a single session from its summary screen.
+- **SDK telemetry:** the SDK connects to Presage to check the API key. It can also send an anonymous diagnostics summary (no video, no measurements, no identifiers, according to Presage's docs). That's on by default in the SDK, but Smile Jar turns it off unless you choose to share it.
 - **AI services:** none. The SDK's optional LLM Insights feature isn't used.
-- **Not medical:** Smile Jar makes no diagnosis, treatment or health or emotion assessment. It's a game.
+- **Not medical:** no diagnosis, no treatment, no health or emotion claims. It's just a game.
 
 ## Agent Session
 
-<!-- Upload the curated Claude Code transcript at https://dev.to/agent_sessions/new, remove anything sensitive (API keys, emails), press Make Public, and embed it here. -->
+<!-- Optional: embed your agent session here, or delete this section. -->
 
-Smile Jar was built with Claude Code: researching the SmartSpectra SDK's expression output, designing the smile-counting logic and its tests, and building the consent-first UI.
-
-<!-- Add a cover image. Reminder: one entry per participant, no team submissions. -->
+I used Claude Code as a coding helper along the way, mainly for digging through the SDK docs, the smile-counting logic and tests, and the UI.
