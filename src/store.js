@@ -1,4 +1,4 @@
-// store.js: everything Smile Jar keeps, in one localStorage record on this device.
+// store.js: everything Smile Monster keeps, in one localStorage record on this device.
 //
 // Kept: consent timestamp, settings, the campaign (cause, sponsors with their snack jokes,
 // pledge terms and confirmed donations), the monster's "diet" (how many smiles each joke
@@ -10,14 +10,15 @@ import { emptyMonster } from './monster.js';
 
 export const SPONSOR_COLOURS = ['#ef6f5e', '#2f8fd8', '#f4a72a', '#7b4cd8', '#2f9e6b', '#e05aa8'];
 
-export const STORAGE_KEY = 'smilejar.v1';
+export const STORAGE_KEY = 'smilejar.v1'; // kept from Smile Jar so existing saves still load
 export const CONSENT_VERSION = 1;
 
 export function defaultState() {
   return {
     version: 1,
     consent: null, // { version, acceptedAt }
-    settings: { telemetry: false, showPulse: false, breathMirror: true, sessionMinutes: 2, sound: true },
+    settings: { telemetry: false, showPulse: false, breathMirror: true, sessionMinutes: 2, sound: true, music: true, volume: 0.7 },
+    storySeen: false, // the opening story plays once; it can be replayed from the home screen
     campaign: {
       cause: 'Local food bank',
       goalCents: 2500,

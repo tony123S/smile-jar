@@ -1,22 +1,22 @@
-// jar-voice.js: what the jar says, and when. Pure logic so it can be unit tested.
+// jar-voice.js: what the monster says, and when. Pure logic so it can be unit tested.
 //
 // JarVoice turns session events (and the live HAPPY level) into short speech-bubble lines.
 // Reactions to counted smiles always speak; ambient lines (teasing as the meter rises,
-// streak milestones, nudges when it's quiet) are rate-limited so the jar isn't annoying.
+// streak milestones, nudges when it's quiet) are rate-limited so the monster isn't annoying.
 
 const LINES = {
-  start: ['Feed me smiles!', 'Ready when you are.', 'I\u2019m sooo hungry...'],
+  start: ['Let\u2019s bring the colours back!', 'Ready when you are!', 'Will you smile with me?'],
   pokerStart: ['Straight face. Go.', 'Let’s see how tough you are.', 'Don’t. You. Dare.'],
-  smile: ['Clink!', 'Delicious.', 'Ooh, that one counts!', 'More please!', 'That’s the stuff.'],
+  smile: ['Sparkle!', 'I feel warmer!', 'Ooh, that one counts!', 'More please!', 'The flowers felt that!'],
   combo: ['Combo! Keep going!', 'You’re on a roll!', 'Unstoppable!'],
   golden: ['GOLDEN GRIN!', 'Now THAT is a smile.', 'Shiny!'],
   wow: ['Whoa!', 'Didn’t see that coming, huh?'],
-  nudge: ['Psst. Read the card.', 'I’m getting hungry...', 'Is that a smile I almost see?'],
+  nudge: ['Psst. Read the card.', 'The world feels a bit grey...', 'Is that a smile I almost see?'],
   pokerNear: ['I see that lip twitching...', 'Don’t you dare...', 'Careful...', 'Almost got you...'],
   pokerCrack: ['GOTCHA!', 'Cracked! Pay up, sponsors.', 'Ha! I knew it.', 'Weak. Lovely, but weak.'],
   pokerMilestone: ['Impressive. Suspiciously impressive.', 'Are you even human?', 'Okay, stone face.'],
   learned: ['I think I know what you like.', 'Found your weak spot.'],
-  evolve: ['I\u2019M EVOLVING!', 'Something is happening to me!', 'Look at me now!'],
+  evolve: ['I\u2019M GROWING!', 'Something is happening to me!', 'Look at me now!', 'The world is waking up!'],
   snack: ['A snack from a sponsor!', 'Ooh, this one\u2019s from a friend.'],
   talking: ['Shh, I\u2019m listening...', 'Are you talking to me?'],
 };

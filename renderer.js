@@ -1,14 +1,20 @@
-// renderer.js: Smile Jar, The Smile Monster. Bundled to dist/renderer.bundle.js by build.mjs.
+// renderer.js: Smile Monster. Bundled to dist/renderer.bundle.js by build.mjs.
+//
+// Flow: opening story (once) -> camera consent -> home (the monster's world) -> pick a game ->
+// camera starts. The camera is only ever started inside startSession().
 //
 // SmartSpectra integration lives in buildSdk()/wireSdk(): we request the SDK's face bundle
 // (EXPRESSIONS, BLINKING, TALKING), optionally the breathing bundle (for the breathing mirror)
 // and the cardio bundle (pulse). Each `metrics` event is decoded and:
 //   - face.expression[]  -> SmileDetector (qualifying smiles) + the monster's face
 //   - face.blinking[]    -> BlinkTracker  (the monster blinks when you blink)
-//   - face.talking[]     -> talkingNow    (the monster listens when you talk)
-//   - breathing trace    -> BreathNormalizer (the monster's belly rises and falls with yours)
+//   - face.talking[]     -> talkingNow    (the monster "talks" along)
+//   - breathing trace    -> BreathNormalizer (the monster's body rises and falls with yours)
 // SignalMonitor records which of these actually arrive, and the "Live signals" chips show it.
 // Nothing is invented: if a signal never arrives, its chip says so and the monster ignores it.
+//
+// One qualifying smile = +10 XP (game) and the sponsors' per-smile pledge (real world).
+// XP is derived from the smile count, so a smile can never be rewarded twice.
 
 'use strict';
 
@@ -20,10 +26,15 @@ import * as store from './src/store.js';
 import { JOY_REEL } from './src/joy-reel.js';
 import { HumourModel, personaFor } from './src/humour.js';
 import { JarVoice } from './src/jar-voice.js';
-import { sfx, setMuted } from './src/sounds.js';
+import { sfx } from './src/sounds.js';
+import { unlockAudio, setAudioPrefs } from './src/audio.js';
+import { music } from './src/music.js';
 import { drawReceipt } from './src/receipt.js';
 import { SimulatedSDK } from './src/simulator.js';
-import { stageFor, traitsFor, monsterName, monsterSvg, emptyMonster, DIET_KINDS } from './src/monster.js';
+import {
+  STAGES, stageFor, traitsFor, monsterName, monsterSvg, emptyMonster, DIET_KINDS, xpFor, worldTier, XP_PER_SMILE,
+} from './src/monster.js';
+import { worldSvg } from './src/world.js';
 import { SIGNALS, SignalMonitor, BlinkTracker, talkingNow, BreathNormalizer } from './src/signals.js';
 
 const {
@@ -39,9 +50,22 @@ const $ = (id) => document.getElementById(id);
 let state = store.load();
 
 // ---------------------------------------------------------------- helpers
-const VIEWS = ['consent', 'home', 'session', 'summary'];
+const VIEWS = ['story', 'consent', 'home', 'campaign', 'session', 'summary'];
+let currentView = null;
+
+function musicFor(view) {
+  if (view === 'story') return 'story';
+  if (view === 'session') return 'play';
+  const finalForm = stageFor(state.monster.smiles).key === 'final';
+  return finalForm ? 'final' : 'home';
+}
+
 function show(view) {
   for (const v of VIEWS) $(`view-${v}`).hidden = v !== view;
+  $('topbar').hidden = view === 'story';
+  currentView = view;
+  document.body.dataset.view = view;
+  music.request(musicFor(view));
   window.scrollTo(0, 0);
 }
 
@@ -54,7 +78,7 @@ function toast(msg) {
 }
 
 function persist() {
-  if (!store.save(state)) toast('Could not save on this device; totals will reset when the app closes.');
+  if (!store.save(state)) toast('Could not save on this device; progress will reset when the app closes.');
 }
 
 function esc(s) {
@@ -67,6 +91,48 @@ function fmtSecs(ms) {
 }
 
 const plural = (n, one, many) => `${n} ${n === 1 ? one : many}`;
+
+// ---------------------------------------------------------------- audio
+// Music and sound start only after the player has interacted with the app.
+function applyAudioSettings() {
+  const st = state.settings;
+  setAudioPrefs({ volume: Number(st.volume ?? 0.7), music: st.music !== false, sfx: st.sound !== false });
+  music.sync();
+  const mBtn = $('btn-music'), sBtn = $('btn-sfx');
+  mBtn.setAttribute('aria-pressed', String(st.music !== false));
+  mBtn.textContent = st.music !== false ? '♫ Music on' : '♫ Music off';
+  sBtn.setAttribute('aria-pressed', String(st.sound !== false));
+  sBtn.textContent = st.sound !== false ? '✦ Sounds on' : '✦ Sounds off';
+  const vol = Math.round(Number(st.volume ?? 0.7) * 100);
+  $('vol').value = vol;
+  $('f-volume').value = vol;
+  $('f-music').checked = st.music !== false;
+  $('f-sfx').checked = st.sound !== false;
+  document.body.dataset.music = st.music !== false ? (music.current || 'waiting') : 'off';
+}
+
+function onFirstGesture() {
+  if (unlockAudio()) {
+    applyAudioSettings();
+    window.removeEventListener('pointerdown', onFirstGesture, true);
+    window.removeEventListener('keydown', onFirstGesture, true);
+  }
+}
+window.addEventListener('pointerdown', onFirstGesture, true);
+window.addEventListener('keydown', onFirstGesture, true);
+setInterval(() => { document.body.dataset.music = state.settings.music !== false ? (music.current || 'waiting') : 'off'; }, 1000);
+
+function setSetting(k, v) { state.settings[k] = v; persist(); applyAudioSettings(); }
+$('btn-music').addEventListener('click', () => setSetting('music', state.settings.music === false));
+$('btn-sfx').addEventListener('click', () => { setSetting('sound', state.settings.sound === false); sfx.click(); });
+$('vol').addEventListener('input', (e) => setSetting('volume', Number(e.target.value) / 100));
+$('f-volume').addEventListener('input', (e) => setSetting('volume', Number(e.target.value) / 100));
+$('f-music').addEventListener('change', (e) => setSetting('music', e.target.checked));
+$('f-sfx').addEventListener('change', (e) => setSetting('sound', e.target.checked));
+document.addEventListener('visibilitychange', () => {
+  // Pause the music while the window is hidden; it resumes where the screen wants it.
+  music.request(document.hidden ? null : musicFor(currentView));
+});
 
 // ---------------------------------------------------------------- monster
 // The saved monster plus whatever the running session has fed it (committed when the session ends).
@@ -85,35 +151,129 @@ function monsterLook(m) {
   const sponsors = state.campaign.sponsors.map((sp) => ({ ...sp, snackSmiles: m.snackBy?.[sp.id] || 0 }));
   const stage = stageFor(m.smiles);
   const traits = traitsFor(m, sponsors);
-  return { stage, traits, name: monsterName(traits, stage.key) };
+  return { stage, traits, name: monsterName(traits, stage.key), xp: xpFor(m.smiles), tier: worldTier(m.smiles) };
 }
 
 let uidSeq = 0;
-function drawMonster(el, m, live = {}, standalone = false) {
+function drawMonster(el, m, live = {}, opts = {}) {
   const { stage, traits } = monsterLook(m);
-  const svg = monsterSvg({ stage: stage.key, traits, progress: stage.progress, live, standalone, uid: `m${++uidSeq}` });
+  const svg = monsterSvg({ stage: stage.key, traits, live, uid: `m${++uidSeq}`, ...opts });
   if (el) el.innerHTML = svg;
   return svg;
 }
 
-function stageLine(stage) {
-  return stage.next ? `${plural(stage.toNext, 'more smile', 'more smiles')} until ${stage.next.label}` : 'Fully grown. It keeps eating, though.';
+const drawnTier = {};
+function drawWorld(id, tier, { fade = false } = {}) {
+  const el = $(id);
+  if (drawnTier[id] === tier) return;
+  drawnTier[id] = tier;
+  el.innerHTML = worldSvg({ tier, uid: `${id}-${tier}` });
+  if (fade) { el.classList.remove('fade'); void el.offsetWidth; el.classList.add('fade'); }
 }
 
+function chapterLine(stage) { return `Chapter ${stage.level} · ${stage.chapter}`; }
+
+function nextLine(stage) {
+  return stage.next
+    ? `${plural(stage.toNext, 'more smile', 'more smiles')} until it grows into a ${stage.next.label}`
+    : 'Fully grown, and the whole world is smiling again!';
+}
+
+function xpText(xp) {
+  return xp.levelSize == null ? `${xp.xp} XP · max level` : `${xp.intoLevel} / ${xp.levelSize} XP`;
+}
+
+function xpWidth(xp) { return xp.levelSize == null ? 100 : (xp.intoLevel / xp.levelSize) * 100; }
+
 const TRAIT_HINT = {
-  'Pun': 'puns grow horns',
-  'Animal fact': 'animal facts grow fur and ears',
+  'Pun': 'puns grow tiny horns',
+  'Animal fact': 'animal facts grow fluffy ears',
   'Memory': 'memories make it glow',
-  'Picture this': 'daydreams grow stars',
+  'Picture this': 'daydreams give it star freckles',
   'Sponsor snack': 'sponsor snacks add hearts in their colour',
 };
 
 function dietLine(m) {
   const eaten = DIET_KINDS.filter((k) => (m.diet[k] || 0) > 0).map((k) => `${k} ${m.diet[k]}`);
   return eaten.length
-    ? `Diet: ${eaten.join(' · ')}`
-    : `What it eats shapes how it looks: ${Object.values(TRAIT_HINT).join(', ')}.`;
+    ? `What makes it happy: ${eaten.join(' · ')}`
+    : `What you smile at shapes how it grows: ${Object.values(TRAIT_HINT).join(', ')}.`;
 }
+
+// ---------------------------------------------------------------- story
+const SCENES = [
+  {
+    title: 'A World Without Happiness',
+    text: 'Once upon a time, there was a world full of colours. Until one day, all the smiles disappeared...',
+    tier: 0, monster: null,
+  },
+  {
+    title: 'The Little Monster',
+    text: 'A little monster was born. But it had never seen a smile, and its world was slowly fading away.',
+    tier: 0, monster: { face: 'flat', tiny: true },
+  },
+  {
+    title: 'A New Friend',
+    text: 'Then, someone came along. A single smile gave the monster a little spark of happiness.',
+    tier: 0, spark: true, monster: { face: 'wow', tiny: true },
+  },
+  {
+    title: 'Your Adventure Begins',
+    text: 'Every smile makes it stronger. Can you help this little monster bring its world back to life?',
+    tier: 2, monster: { face: 'grin' },
+  },
+];
+let sceneIdx = 0;
+let storyReturn = 'consent';
+
+function renderScene(i, animate = true) {
+  const sc = SCENES[i];
+  const apply = () => {
+    $('story-world').innerHTML = worldSvg({ tier: sc.tier, spark: !!sc.spark, uid: `story${i}` });
+    const mon = $('story-monster');
+    mon.hidden = !sc.monster;
+    if (sc.monster) {
+      mon.classList.toggle('tiny', !!sc.monster.tiny);
+      mon.innerHTML = monsterSvg({ stage: 'egg', traits: traitsFor(emptyMonster()), live: { face: sc.monster.face }, uid: `sm${i}` });
+    }
+    $('story-title').textContent = sc.title;
+    const t = $('story-text');
+    t.textContent = sc.text;
+    t.classList.remove('in'); void t.offsetWidth; t.classList.add('in');
+    $('story-dots').innerHTML = SCENES.map((_, j) => `<span class="${j <= i ? 'on' : ''}"></span>`).join('');
+    const last = i === SCENES.length - 1;
+    $('btn-story-next').textContent = last ? 'LET’S BEGIN!' : 'Continue';
+    $('btn-story-skip').hidden = last;
+    $('view-story').classList.remove('leaving');
+  };
+  if (!animate) { apply(); return; }
+  $('view-story').classList.add('leaving');
+  setTimeout(apply, 550);
+}
+
+function startStory(returnTo) {
+  storyReturn = returnTo;
+  sceneIdx = 0;
+  show('story');
+  renderScene(0, false);
+}
+
+function finishStory() {
+  state.storySeen = true; // only this flag is saved; it holds no personal data
+  persist();
+  if (storyReturn === 'home' && store.hasConsent(state)) { renderHome(); show('home'); } else { renderConsent(); show('consent'); }
+}
+
+$('btn-story-next').addEventListener('click', () => {
+  sfx.click();
+  if (sceneIdx >= SCENES.length - 1) { sfx.bloom(); finishStory(); return; }
+  sceneIdx += 1;
+  if (sceneIdx === SCENES.length - 1) setTimeout(() => sfx.bloom(), 600);
+  renderScene(sceneIdx);
+});
+$('btn-story-skip').addEventListener('click', finishStory);
+$('btn-replay-story').addEventListener('click', () => startStory('home'));
+$('btn-replay-story-2').addEventListener('click', () => startStory('home'));
 
 // ---------------------------------------------------------------- consent
 function renderConsent() {
@@ -138,37 +298,53 @@ function campaignTotals() {
   return { smiles, total, lines };
 }
 
-function renderHome() {
+function renderChapters(stageIndex, el) {
+  el.innerHTML = STAGES.map((s, i) => `<li class="${i < stageIndex ? 'done' : i === stageIndex ? 'now' : ''}" title="${esc(s.chapter)}">${i < stageIndex ? '✓ ' : ''}${i + 1}. ${esc(s.chapter)}</li>`).join('');
+}
+
+function renderImpact() {
   const c = state.campaign;
   const { smiles, total } = campaignTotals();
   const goal = Math.max(100, c.goalCents || 0);
-  const m = liveMonster(null);
-  const look = monsterLook(m);
-
-  drawMonster($('home-monster'), m, { face: 'flat' });
-  $('home-stage').textContent = `Stage ${look.stage.index + 1} of 4 · ${look.stage.label}`;
-  $('home-name').textContent = look.name;
-  $('home-stage-fill').style.width = `${look.stage.progress * 100}%`;
-  $('home-next').textContent = `${plural(m.smiles, 'smile', 'smiles')} eaten. ${stageLine(look.stage)}`;
-  $('home-diet').textContent = dietLine(m);
-
-  const confirmed = confirmedTotal(c.sponsors);
   $('home-cause').textContent = c.cause || 'a good cause';
   $('home-total').textContent = formatCents(total);
-  $('home-confirmed').textContent = formatCents(confirmed);
+  $('home-confirmed').textContent = formatCents(confirmedTotal(c.sponsors));
   $('home-smiles').textContent = smiles;
   $('home-goal').textContent = formatCents(goal);
   $('home-progress').style.width = `${Math.min(100, (total / goal) * 100)}%`;
   const rate = marginalRate(c.sponsors, smiles);
   $('home-rate').textContent = c.sponsors.length === 0
-    ? 'Add a sponsor so your smiles are worth something.'
-    : rate > 0 ? `your next smile is worth ${rate}¢` : 'every sponsor has reached their cap';
+    ? 'add a sponsor so your smiles count for charity'
+    : rate > 0 ? `your next smile adds ${rate}¢ in pledges` : 'every sponsor has reached their cap';
+}
 
+function renderHome() {
+  const m = liveMonster(null);
+  const look = monsterLook(m);
+  drawWorld('home-world', look.tier);
+  drawMonster($('home-monster'), m, {});
+  $('home-level').textContent = `Lv ${look.stage.level}`;
+  $('home-name').textContent = look.name;
+  $('home-stage').textContent = chapterLine(look.stage);
+  $('home-stage-fill').style.width = `${xpWidth(look.xp)}%`;
+  $('home-xp').textContent = xpText(look.xp);
+  $('home-next').textContent = nextLine(look.stage);
+  $('home-diet').textContent = dietLine(m);
+  renderChapters(look.stage.index, $('chapter-dots'));
+  renderImpact();
+}
+
+// ---------------------------------------------------------------- charity & settings
+function renderCampaign() {
+  const c = state.campaign;
+  const { smiles } = campaignTotals();
+  const goal = Math.max(100, c.goalCents || 0);
   $('f-cause').value = c.cause;
   $('f-goal').value = Math.round(goal / 100);
   $('f-minutes').value = state.settings.sessionMinutes;
   $('f-pulse').checked = !!state.settings.showPulse;
   $('f-breath').checked = !!state.settings.breathMirror;
+  applyAudioSettings();
 
   const ledger = pledgeLedger(c.sponsors, smiles);
   const body = $('sponsor-rows');
@@ -199,12 +375,12 @@ function renderHome() {
       if (k === 'snack') s.snack = v.trim();
       if (k === 'confirmed') s.confirmedCents = v === '' ? 0 : Math.max(0, Math.round(Number(v) * 100));
       persist();
-      renderHome();
+      renderCampaign();
     });
     tr.querySelector('button').addEventListener('click', () => {
       c.sponsors = c.sponsors.filter((x) => x !== s);
       persist();
-      renderHome();
+      renderCampaign();
     });
     body.appendChild(tr);
   }
@@ -227,38 +403,49 @@ function renderHome() {
   }
 }
 
-$('f-cause').addEventListener('change', (e) => { state.campaign.cause = e.target.value.trim() || 'a good cause'; persist(); renderHome(); });
-$('f-goal').addEventListener('change', (e) => { state.campaign.goalCents = Math.max(1, Math.round(Number(e.target.value) || 25)) * 100; persist(); renderHome(); });
-$('f-minutes').addEventListener('change', (e) => { state.settings.sessionMinutes = Math.min(15, Math.max(1, Math.round(Number(e.target.value) || 2))); persist(); renderHome(); });
+function openCampaign() { renderCampaign(); show('campaign'); }
+$('btn-settings').addEventListener('click', () => { if (store.hasConsent(state) && !session) openCampaign(); });
+$('btn-open-campaign').addEventListener('click', openCampaign);
+$('btn-back-home').addEventListener('click', () => { renderHome(); show('home'); });
+$('btn-open-privacy').addEventListener('click', () => { renderPrivacy(); dlg.showModal(); });
+
+$('f-cause').addEventListener('change', (e) => { state.campaign.cause = e.target.value.trim() || 'a good cause'; persist(); renderCampaign(); });
+$('f-goal').addEventListener('change', (e) => { state.campaign.goalCents = Math.max(1, Math.round(Number(e.target.value) || 25)) * 100; persist(); renderCampaign(); });
+$('f-minutes').addEventListener('change', (e) => { state.settings.sessionMinutes = Math.min(15, Math.max(1, Math.round(Number(e.target.value) || 2))); persist(); renderCampaign(); });
 $('f-pulse').addEventListener('change', (e) => { state.settings.showPulse = e.target.checked; persist(); });
 $('f-breath').addEventListener('change', (e) => { state.settings.breathMirror = e.target.checked; persist(); });
 $('btn-add-sponsor').addEventListener('click', () => {
   const i = state.campaign.sponsors.length;
   state.campaign.sponsors.push(store.normalizeSponsor({ id: `s${Date.now()}`, name: 'New sponsor', centsPerSmile: 5 }, i));
   persist();
-  renderHome();
+  renderCampaign();
 });
 $('btn-export').addEventListener('click', () => {
   const csv = pledgeStatementCsv(state.campaign, state.sessions);
   const url = URL.createObjectURL(new Blob([csv], { type: 'text/csv' }));
   const a = document.createElement('a');
   a.href = url;
-  a.download = `smile-jar-pledges-${new Date().toISOString().slice(0, 10)}.csv`;
+  a.download = `smile-monster-pledges-${new Date().toISOString().slice(0, 10)}.csv`;
   a.click();
   setTimeout(() => URL.revokeObjectURL(url), 1000);
 });
 $('btn-reset-monster').addEventListener('click', () => {
   const m = liveMonster(null);
   const look = monsterLook(m);
-  if (!confirm(`Retire ${look.name} and start a new egg? Pledges and session totals are kept.`)) return;
+  if (!confirm(`Say goodbye to ${look.name} and raise a new baby monster? Pledges and game totals are kept.`)) return;
   if (m.smiles > 0) state.pastMonsters.push({ name: look.name, stage: look.stage.label, smiles: m.smiles, retiredAt: new Date().toISOString() });
   state.monster = { ...emptyMonster(), bornAt: new Date().toISOString() };
   persist();
-  renderHome();
-  toast('A new egg appeared in the jar.');
+  renderCampaign();
+  toast('A new little monster was born.');
 });
-$('btn-new-session').addEventListener('click', () => startSession('smile'));
-$('btn-poker-session').addEventListener('click', () => startSession('poker'));
+
+// ---------------------------------------------------------------- mode picker
+const picker = $('mode-picker');
+$('btn-play').addEventListener('click', () => { sfx.click(); picker.showModal(); });
+$('btn-mode-cancel').addEventListener('click', () => picker.close());
+$('btn-new-session').addEventListener('click', () => { picker.close(); startSession('smile'); });
+$('btn-poker-session').addEventListener('click', () => { picker.close(); startSession('poker'); });
 
 // ---------------------------------------------------------------- session
 const STATUS = Object.fromEntries(Object.entries(ProcessingStatus).map(([k, v]) => [v, k]));
@@ -311,7 +498,9 @@ function nextCard() {
   const now = Date.now();
   const card = session.humour.next(now);
   $('reel-kind').textContent = card.kind;
-  $('reel-text').textContent = card.text;
+  const rt = $('reel-text');
+  rt.textContent = card.text;
+  rt.classList.remove('in'); void rt.offsetWidth; rt.classList.add('in');
   $('reel-from').hidden = !card.sponsorId;
   $('reel-from').textContent = card.sponsorId ? `A snack from ${card.from}` : '';
   const fav = session.humour.favourite();
@@ -347,17 +536,6 @@ function speak(text) {
   speak.t = setTimeout(() => { b.hidden = true; }, 2600);
 }
 
-function syncMute() {
-  setMuted(!state.settings.sound);
-  const btn = $('btn-mute');
-  btn.textContent = state.settings.sound ? 'Sound on' : 'Sound off';
-  btn.setAttribute('aria-pressed', String(!state.settings.sound));
-}
-$('btn-mute').addEventListener('click', () => {
-  state.settings.sound = !state.settings.sound;
-  persist();
-  syncMute();
-});
 $('btn-next-card').addEventListener('click', () => { nextCard(); restartReelTimer(); });
 function restartReelTimer() {
   clearInterval(session?.reelTimer);
@@ -382,17 +560,18 @@ function updateMeter(level) {
   $('meter-value').textContent = `${pct}%`;
 }
 
-function dropCoin(cents, golden = false, color = null) {
-  const layer = $('coin-layer');
-  const coin = document.createElement('div');
-  coin.className = golden ? 'coin golden' : 'coin';
-  if (color) coin.style.boxShadow = `0 0 0 4px ${color}`;
-  coin.textContent = cents > 0 ? `+${cents}¢` : '☺';
-  const box = $('s-monster').getBoundingClientRect();
-  coin.style.left = `${box.left + box.width / 2 - 22}px`;
-  coin.style.top = `${box.top + 10}px`;
-  layer.appendChild(coin);
-  setTimeout(() => coin.remove(), 1200);
+/** Floating "+10 XP" / "+15¢" / heart pops above the monster. */
+function popAt(text, cls, dx = 0, delay = 0) {
+  setTimeout(() => {
+    const box = $('s-monster').getBoundingClientRect();
+    const el = document.createElement('div');
+    el.className = `pop ${cls}`;
+    el.textContent = text;
+    el.style.left = `${box.left + box.width / 2 - 30 + dx}px`;
+    el.style.top = `${box.top + box.height * 0.25}px`;
+    $('pop-layer').appendChild(el);
+    setTimeout(() => el.remove(), 1400);
+  }, delay);
 }
 
 // Live mirror state, filled only from real SDK signals (or the labelled simulator).
@@ -405,6 +584,7 @@ function liveFace() {
     eyesClosed: s.blink.closed || now < s.eyesClosedUntil,
     breath: state.settings.breathMirror ? s.breath.level() : null,
     talking: !!s.talking,
+    talkOpen: !!s.talking && Math.floor(now / 170) % 2 === 0,
   };
 }
 
@@ -413,9 +593,12 @@ function renderMonsterNow() {
   const m = liveMonster();
   const look = monsterLook(m);
   drawMonster($('s-monster'), m, liveFace());
+  drawWorld('s-world', look.tier, { fade: true });
+  $('s-level').textContent = `Lv ${look.stage.level}`;
   $('s-name').textContent = look.name;
-  $('s-stage').textContent = `${look.stage.label} · ${stageLine(look.stage)}`;
-  $('s-stage-fill').style.width = `${look.stage.progress * 100}%`;
+  $('s-stage').textContent = chapterLine(look.stage);
+  $('s-stage-fill').style.width = `${xpWidth(look.xp)}%`;
+  $('s-xp').textContent = xpText(look.xp);
 }
 
 // Metrics arrive many times a second; redraw the monster at most once per frame.
@@ -439,18 +622,16 @@ function renderSignals() {
     const word = !requested[key] ? 'off' : s.live ? 'live' : s.seen ? 'paused' : 'waiting';
     return `<span class="chip ${cls}" title="${s.count} samples received">${label}: ${word}</span>`;
   }).join('');
-  const blinks = session.blink.blinks;
   $('s-blinks').textContent = st.blinking.seen
-    ? `Blinks seen: ${blinks}${session.talking ? ' · you’re talking' : ''}`
+    ? `Blinks seen: ${session.blink.blinks}${session.talking ? ' · you’re talking' : ''}`
     : '';
 }
 
 function renderSession() {
   if (!session) return;
-  const sponsors = state.campaign.sponsors;
-  const cents = sessionPledge(sponsors, session.before, session.smiles);
+  const cents = sessionPledge(state.campaign.sponsors, session.before, session.smiles);
   $('s-smiles').textContent = session.smiles;
-  $('s-money').textContent = `${formatCents(cents)} pledged`;
+  $('s-money').textContent = formatCents(cents);
   if (session.mode === 'poker') {
     const streak = Date.now() - session.straightSince;
     session.bestStreakMs = Math.max(session.bestStreakMs, streak);
@@ -458,8 +639,7 @@ function renderSession() {
   }
   renderSignals();
   const left = Math.max(0, session.deadline - Date.now());
-  const m = Math.floor(left / 60000), s = Math.floor((left % 60000) / 1000);
-  $('s-timer').textContent = `${m}:${String(s).padStart(2, '0')} left`;
+  $('s-timer').textContent = fmtSecs(left + 999);
   if (left <= 0) endSession();
 }
 
@@ -471,19 +651,25 @@ function popBadge(text, kind) {
   void b.offsetWidth; // restart the pop animation
   b.classList.add('pop');
   clearTimeout(popBadge.t);
-  popBadge.t = setTimeout(() => { b.hidden = true; }, 1900);
+  popBadge.t = setTimeout(() => { b.hidden = true; }, 2200);
 }
 
-function celebrateEvolution(stage) {
+function bounceClass(cls, ms) {
   const card = $('monster-card');
-  card.classList.remove('evolving');
+  card.classList.remove(cls);
   void card.offsetWidth;
-  card.classList.add('evolving');
-  setTimeout(() => card.classList.remove('evolving'), 1400);
-  sfx.evolve();
-  popBadge(stage.key === 'blob' ? 'It hatched!' : `Evolved: ${stage.label}!`, 'evolve');
+  card.classList.add(cls);
+  setTimeout(() => card.classList.remove(cls), ms);
+}
+
+function celebrateEvolution(from, to) {
+  bounceClass('evolving', 1700);
+  sfx.evolve(to.level);
+  sfx.chapter();
+  popBadge(`Chapter ${from.level} complete! Now: ${to.chapter}`, 'evolve');
   speak(session.voice.onEvolve(Date.now()).text);
-  session.evolutions.push(stage.label);
+  for (let i = 0; i < 6; i++) popAt('♥', 'heart', (i - 2.5) * 34, 200 + i * 120);
+  session.evolutions.push(to);
 }
 
 const COMBO_WINDOW_MS = 8000;
@@ -493,8 +679,9 @@ function onSmile(peakHappy = 0) {
   const s = session;
   const sponsors = state.campaign.sponsors;
   const worth = marginalRate(sponsors, s.before + s.smiles);
-  const stageBefore = stageFor(liveMonster().smiles);
-  s.smiles += 1;
+  const before = stageFor(liveMonster().smiles);
+  const tierBefore = worldTier(liveMonster().smiles);
+  s.smiles += 1; // the single place a qualifying smile is counted; XP and pledges both derive from it
   const now = Date.now();
   s.combo = now - s.lastSmileAt <= COMBO_WINDOW_MS ? s.combo + 1 : 1;
   s.bestCombo = Math.max(s.bestCombo, s.combo);
@@ -515,17 +702,28 @@ function onSmile(peakHappy = 0) {
     s.snack[card.sponsorId] = (s.snack[card.sponsorId] || 0) + 1;
     snackFrom = sponsors.find((x) => x.id === card.sponsorId) || null;
   }
-  dropCoin(worth, golden, snackFrom?.color);
   renderTaste();
+
+  // Game world: happiness energy and XP. Real world: the sponsors' pledge.
+  popAt(`+${XP_PER_SMILE} XP`, golden ? 'xp gold' : 'xp', -40);
+  if (worth > 0) popAt(`+${worth}¢ for charity`, 'cents', 40, 180);
+  const xpBar = $('s-stage-fill').parentElement;
+  xpBar.classList.remove('gain'); void xpBar.offsetWidth; xpBar.classList.add('gain');
+  bounceClass('happy', 520);
 
   if (s.mode === 'poker') { sfx.crack(); s.voice.resetStreak(); }
   else if (golden) sfx.golden();
-  else { sfx.coin(); if (s.combo > 1) sfx.combo(s.combo); }
+  else { sfx.smile(); if (s.combo > 1) sfx.combo(s.combo); }
+  sfx.happy();
+  sfx.xp();
   if (snackFrom) sfx.snack();
   speak(s.voice.onSmile({ mode: s.mode, golden, combo: s.combo }, now).text);
 
-  const stageAfter = stageFor(liveMonster().smiles);
-  if (stageAfter.index > stageBefore.index) celebrateEvolution(stageAfter);
+  const after = stageFor(liveMonster().smiles);
+  const tierAfter = worldTier(liveMonster().smiles);
+  if (tierAfter !== tierBefore && tierAfter >= 1) setTimeout(() => sfx.bloom(), 450); // the world comes back a little
+  if (after.index > before.index) celebrateEvolution(before, after);
+  else if (tierBefore === 0) popBadge('The first light is back!', 'evolve');
   else if (snackFrom) popBadge(`${snackFrom.name}’s snack got you!`, 'snack');
   else if (s.mode === 'poker') popBadge(s.combo > 1 ? `Cracked again! x${s.combo}` : 'You cracked!', 'crack');
   else if (golden) popBadge(s.combo > 1 ? `Golden grin! Combo x${s.combo}` : 'Golden grin!', 'gold');
@@ -545,7 +743,7 @@ function handleMetrics(m) {
 
   const expressions = f?.expression;
   if (expressions?.length) {
-    // Process sample by sample so each counted smile gets its own coin.
+    // Process sample by sample so each counted smile is rewarded exactly once.
     for (const e of expressions) {
       const before = detector.count;
       detector.pushExpressions([e]);
@@ -557,7 +755,7 @@ function handleMetrics(m) {
     if (face !== s.face) {
       if (face === 'wow' && now - s.lastSurpriseAt > SURPRISE_COOLDOWN_MS) {
         s.lastSurpriseAt = now;
-        s.surprises += 1; // big surprised eyes grow with surprise moments
+        s.surprises += 1; // big sparkly eyes grow with surprise moments
         if (s.mode !== 'poker') { popBadge('Whoa!', 'wow'); sfx.wow(); }
       }
       s.face = face;
@@ -580,7 +778,12 @@ function handleMetrics(m) {
     const t = talkingNow(f.talking);
     if (t !== s.talking) {
       s.talking = t;
-      if (t) { const line = s.voice.onTalking(now); if (line) speak(line.text); }
+      clearInterval(s.talkTimer);
+      if (t) {
+        s.talkTimer = setInterval(scheduleMonster, 170); // mouth moves while the SDK says you're talking
+        const line = s.voice.onTalking(now);
+        if (line) speak(line.text);
+      }
       scheduleMonster();
     }
   }
@@ -630,7 +833,7 @@ function wireSdk(s) {
     try {
       handleMetrics(SIMULATE ? buf : decodeMetrics(buf));
     } catch (err) {
-      console.error('[smile-jar] could not handle metrics', err);
+      console.error('[smile-monster] could not handle metrics', err);
     }
   });
   s.on('error', (code, message, retryable) => {
@@ -665,6 +868,7 @@ async function startSession(mode = 'smile') {
     breath: new BreathNormalizer(),
     eyesClosedUntil: 0,
     talking: false,
+    talkTimer: null,
     toldLearned: false,
     mode,
     face: 'flat',
@@ -681,16 +885,15 @@ async function startSession(mode = 'smile') {
     evolutions: [],
   };
   const poker = mode === 'poker';
-  $('s-mode').textContent = poker ? 'Try Not to Smile' : 'Feed the monster';
+  $('s-mode').textContent = poker ? 'Try Not to Smile' : 'Smile Challenge';
   $('s-mode-help').textContent = poker
-    ? 'Keep a straight face. Every crack still feeds the monster, and your sponsors pay.'
-    : 'Smile when something makes you happy. Every smile feeds the monster and drops a coin.';
+    ? 'Keep a straight face. Every crack still gives your monster energy, and your sponsors pledge.'
+    : 'Smile when something makes you happy. Every smile gives your monster energy.';
   $('s-unit').textContent = poker ? 'cracks' : 'smiles';
   $('s-streak').hidden = !poker;
   $('s-badge').hidden = true;
   $('s-speech').hidden = true;
   $('s-blinks').textContent = '';
-  syncMute();
   sfx.start();
   $('pulse-row').hidden = !state.settings.showPulse;
   $('pulse-value').textContent = '--';
@@ -699,6 +902,7 @@ async function startSession(mode = 'smile') {
   $('meter-mark').style.left = `${SMILE.onThreshold}%`;
   updateMeter(0);
   setHint('Starting the SDK...');
+  delete drawnTier['s-world'];
   nextCard();
   restartReelTimer();
   show('session');
@@ -711,7 +915,7 @@ async function startSession(mode = 'smile') {
     sdk = buildSdk();
     wireSdk(sdk);
     if (SIMULATE) { $('cam-placeholder').textContent = 'Simulated camera'; }
-    await sdk.start(); // SDK acquires the camera here, after consent
+    await sdk.start(); // the SDK acquires the camera here: after consent, and only when a game starts
   } catch (err) {
     showError(err.message || String(err));
     setHint('Could not start.', 'err');
@@ -722,7 +926,7 @@ async function stopSdk() {
   const s = sdk;
   sdk = null;
   if (s) {
-    try { await s.stop(); } catch (err) { console.warn('[smile-jar] stop failed', err); }
+    try { await s.stop(); } catch (err) { console.warn('[smile-monster] stop failed', err); }
     try { s.destroy(); } catch { /* already destroyed */ }
   }
   const v = $('preview');
@@ -732,7 +936,7 @@ async function stopSdk() {
   $('cam-live').hidden = true;
 }
 
-const STONE_FACE_MS = 15000; // a Try Not to Smile session with a 15 s straight face adds a stone patch
+const STONE_FACE_MS = 15000; // a Try Not to Smile game with a 15 s straight face adds steady freckles
 
 let ending = false;
 async function endSession() {
@@ -740,6 +944,7 @@ async function endSession() {
   ending = true;
   clearInterval(session.timer);
   clearInterval(session.reelTimer);
+  clearInterval(session.talkTimer);
   const s = session;
   const now = Date.now();
   if (s.mode === 'poker') s.bestStreakMs = Math.max(s.bestStreakMs, now - s.straightSince);
@@ -771,13 +976,16 @@ async function endSession() {
 
   const m = liveMonster(null);
   const look = monsterLook(m);
-  drawMonster($('summary-monster'), m, { face: 'grin' });
-  $('sum-stage').textContent = `Stage ${look.stage.index + 1} of 4 · ${look.stage.label}`;
+  drawWorld('sum-world', look.tier);
+  drawMonster($('summary-monster'), m, { face: s.smiles > 0 ? 'grin' : 'flat' });
+  $('sum-level').textContent = `Lv ${look.stage.level}`;
+  $('sum-stage').textContent = chapterLine(look.stage);
   $('sum-name').textContent = look.name;
   $('sum-evolved').hidden = s.evolutions.length === 0;
   $('sum-evolved').textContent = s.evolutions.length
-    ? `It evolved this session: ${[s.stageAtStart.label, ...s.evolutions].join(' → ')}`
+    ? `It grew up this game: ${[s.stageAtStart.label, ...s.evolutions.map((x) => x.label)].join(' → ')}`
     : '';
+  $('sum-xp').textContent = `+${s.smiles * XP_PER_SMILE} XP · ${xpText(look.xp)} · ${nextLine(look.stage)}`;
 
   const unit = s.mode === 'poker' ? (record.smiles === 1 ? 'crack' : 'cracks') : (record.smiles === 1 ? 'qualifying smile' : 'qualifying smiles');
   $('sum-smiles').textContent = record.smiles;
@@ -785,7 +993,7 @@ async function endSession() {
   $('sum-money').textContent = formatCents(record.pledgedCents);
   $('sum-cause').textContent = state.campaign.cause;
 
-  // Per sponsor: what this session added to their pledge, and credit for their snack.
+  // Per sponsor: what this game added to their pledge, and credit for their snack.
   const sponsorLines = sponsors.map((sp) => {
     const cents = sponsorOwes(sp, s.before + s.smiles) - sponsorOwes(sp, s.before);
     const capped = sp.capCents > 0 && sponsorOwes(sp, s.before + s.smiles) >= sp.capCents;
@@ -809,10 +1017,10 @@ async function endSession() {
 
   const totalSmiles = store.totalSmiles(state);
   lastReceipt = {
-    title: s.mode === 'poker' ? 'Try Not to Smile' : 'Feed the monster',
-    monsterSvg: drawMonster(null, m, { face: 'grin' }, true),
+    title: s.mode === 'poker' ? 'Try Not to Smile' : 'Smile Challenge',
+    monsterSvg: drawMonster(null, m, { face: 'grin' }, { standalone: true, backdrop: true }),
     monsterName: look.name,
-    stageLabel: `${look.stage.label} (stage ${look.stage.index + 1} of 4)`,
+    stageLabel: `Level ${look.stage.level} · ${look.stage.chapter}`,
     headline: `${record.smiles} ${unit}`,
     pledged: formatCents(record.pledgedCents),
     cause: state.campaign.cause,
@@ -825,7 +1033,7 @@ async function endSession() {
   };
   $('receipt-preview').hidden = true;
   show('summary');
-  if (s.evolutions.length) sfx.evolve();
+  if (s.evolutions.length) sfx.levelUp();
   ending = false;
 }
 $('btn-end').addEventListener('click', endSession);
@@ -871,7 +1079,7 @@ $('btn-discard').addEventListener('click', () => {
   persist();
   renderHome();
   show('home');
-  toast('Session removed. The monster spat it out.');
+  toast('Game removed. Your monster forgot it ever happened.');
 });
 
 // ---------------------------------------------------------------- privacy
@@ -886,22 +1094,25 @@ $('pv-telemetry-toggle').addEventListener('change', (e) => {
   state.settings.telemetry = e.target.checked;
   persist();
   renderPrivacy();
-  toast('Applies from your next session.');
+  toast('Applies from your next game.');
 });
 $('btn-wipe').addEventListener('click', async () => {
-  if (!confirm('Delete your consent, monster, campaign, sponsors and every session total from this device?')) return;
-  if (session) { clearInterval(session.timer); clearInterval(session.reelTimer); session = null; await stopSdk(); }
+  if (!confirm('Delete your consent, monster, campaign, sponsors and every game total from this device?')) return;
+  if (session) { clearInterval(session.timer); clearInterval(session.reelTimer); clearInterval(session.talkTimer); session = null; await stopSdk(); }
   state = store.wipe();
   lastSummary = null;
   lastReceipt = null;
   dlg.close();
-  renderConsent();
-  show('consent');
-  toast('All Smile Jar data deleted.');
+  applyAudioSettings();
+  startStory('consent');
+  toast('All Smile Monster data deleted.');
 });
 
 window.addEventListener('beforeunload', () => { if (sdk) { try { sdk.destroy(); } catch { /* ignore */ } } });
 
 // ---------------------------------------------------------------- boot
 $('sim-banner').hidden = !SIMULATE;
-if (store.hasConsent(state)) { renderHome(); show('home'); } else { renderConsent(); show('consent'); }
+applyAudioSettings();
+if (!state.storySeen) startStory(store.hasConsent(state) ? 'home' : 'consent');
+else if (store.hasConsent(state)) { renderHome(); show('home'); }
+else { renderConsent(); show('consent'); }

@@ -1,5 +1,5 @@
 ---
-title: Smile Monster - a jar monster that eats your smiles and turns them into charity pledges
+title: Smile Monster - your smiles help a little monster bring its world back to life
 published: false
 tags: presagechallenge, devchallenge, electron, javascript
 cover_image:
@@ -8,41 +8,41 @@ cover_image:
 <!--
   BEFORE YOU PUBLISH (delete this comment):
   1. Run the real app (npm start) with your camera and API key.
-  2. Look at the "Live signals" chips during a session. If any chip stays on "waiting"
+  2. Look at the "Live signals" chips during a game. If any chip stays on "waiting"
      (for example Breathing or Talking), remove that row from the table in
-     "How It Responds to Human Signals" and the matching bullet, or say it didn't arrive.
-  3. Replace VIDEO_URL with your demo video, and AGENT_SESSION_URL with your public transcript link.
+     "How It Responds to Human Signals", or say it didn't arrive for you.
+  3. Upload docs/cover.png as the cover image.
+  4. Replace VIDEO_URL with your demo video, and AGENT_SESSION_URL with your public transcript link.
 -->
 
 *This is a submission for the [Presage SmartSpectra SDK Challenge](https://dev.to/challenges/presage-2026-11-04)*
 
 ## What I Built
 
-Walking can donate your steps. Recycling can earn you points. So why can't a smile raise money too?
+> A little monster was born into a world without happiness. Every smile gives it the power to bring that world back to life.
 
-**Smile Monster** is a little monster that lives in a jar on your laptop, and it only eats smiles. Your friends or family pledge some money to a charity for every smile, like 10 cents a smile up to $10. Then you sit down for two minutes while the monster serves you jokes and funny animal facts. Every real smile the SmartSpectra SDK picks up from your camera feeds the monster, drops a coin in the jar and adds to the pledge.
+**Smile Monster** is a small, cute story game for your laptop. You open it and get a short story: a colourful world that lost all its smiles, and a tiny pastel monster born into it that has never seen one. Then it's your turn. Every real smile the SmartSpectra SDK sees through your camera gives the monster happiness energy, and slowly its grey world gets its colours back.
 
-The monster starts as an **Egg**. Three smiles and it hatches into a **Sleepy Blob**. At 10 smiles it's a **Hatchling**, and at 20 it becomes its **Final Monster** form. Each time it evolves you get a little animation, a sound and the monster yelling something like "I’M EVOLVING!".
+There are five chapters:
 
-The fun part is that what it looks like depends on *what* made you smile:
+1. **The First Smile** - a baby monster with a bit of eggshell still on its head, in a grey world. Your first smile brings back little glowing lights.
+2. **The Awakening** - it gets a sprout and a sleepy face, and flowers and grass come back.
+3. **The Power of Joy** - trees, a warm sun and twinkling stars return.
+4. **Spread the Happiness** - it grows sparkle wings, and the sky fills with colour and a rainbow.
+5. **The World of Smiles** - a flower crown, a soft glow, mushroom houses and floating hearts.
 
-- Puns grow horns
-- Animal facts grow fur and ears
-- Memories make it glow
-- "Picture this" daydreams give it stars
-- Jokes from your sponsors give it hearts in that sponsor's colour
+It's always the same round, squishy monster with big sparkly eyes and tiny arms, it just grows up. Every smile is +10 XP, and every level-up has its own little animation and fanfare.
 
-Your top two joke types also pick its colour and name, so you might end up with a "Fluffy Hornbeast" while your friend gets a "Glowing Stargazer".
+What it looks like also depends on what made you smile. Puns give it tiny horns, animal facts give it fluffy ears, memories make it glow, daydream cards give it star freckles. So your monster might be a "Fluffy Furbun" and your friend's a "Dreamy Starbean".
 
-It also copies you while you play. Smile and it grins. Look surprised and its eyes go wide. Blink and it blinks. Talk and it gives you a curious "?" face. And if you turn on breathing, its belly goes up and down with yours.
+And there's a real-world side too. Walking can donate your steps, recycling can earn you points, so why can't a smile raise money? Friends or family can pledge a few cents per smile to a charity, with a cap so nobody gets a surprise bill. Each smile counts twice: once for the monster's world, and once for the charity.
 
-Some other things in there:
+Other bits:
 
-- **Sponsor Snacks** - each sponsor can add their own joke or memory. The monster serves it as "A snack from Grandma Lee", and if it makes you smile, Grandma gets the credit.
-- **Pledges with caps** - every sponsor sets a rate and a limit, so nobody gets a surprise bill.
-- **Pledged vs donated** - the app shows what was promised and, separately, what you've marked as actually donated. It never touches money. Sponsors donate to the charity themselves.
-- **Smile Receipt** - at the end you can save a picture with your monster, your smiles, what each sponsor pledged and the charity, to send to your sponsors. It never has your face on it.
-- **Try Not to Smile** - keep a straight face while the monster teases you ("I see that lip twitching..."). Every time you crack it still eats, and your sponsors still pay.
+- **Two games**: *Smile Challenge*, and *Try Not to Smile*, where the monster teases you ("I see that lip twitching...") and every crack still counts.
+- **Sponsor Snacks**: sponsors can add their own joke. The monster serves it as "A snack from Grandma Lee", and if it gets you, Grandma gets the credit and a heart on the monster.
+- **Music**: original background music made right in the app, a dreamy tune for the story, soft piano and bells at home, something bouncy while you play. Music, sounds and volume can be turned on and off separately.
+- **Smile Receipt**: a picture with your monster, your smiles, each sponsor's pledge and the charity, to send to your sponsors. Never your face.
 
 ## Demo
 
@@ -56,7 +56,7 @@ To run it: `npm install`, put your SmartSpectra API key in a `.env` file, then `
 
 ## How It Responds to Human Signals
 
-Smile Monster uses the SmartSpectra Node.js/Electron SDK. I ask for the face bundle (expressions, blinking, talking), plus the breathing bundle if "Monster breathes with you" is on:
+I'm using the SmartSpectra Node.js/Electron SDK. I ask for the face bundle (expressions, blinking, talking), plus breathing if "Monster breathes with you" is on:
 
 ```js
 const requestedMetrics = [...faceMetrics];
@@ -69,21 +69,21 @@ sdk.on('metrics', (buf) => handleMetrics(decodeMetrics(buf)));
 
 Then each signal drives one thing:
 
-| You | SDK signal | What happens |
+| You | SDK signal | The monster |
 | --- | --- | --- |
-| Smile | Expressions (HAPPY score) | counts as a smile, the monster grins and eats it |
-| Look surprised | Expressions (SURPRISE score) | its eyes and mouth go wide, and it gets bigger eyes over time |
-| Blink | Blinking | it blinks with you |
-| Talk | Talking | it makes a "?" listening face |
-| Breathe | Breathing trace | its belly rises and falls with yours |
+| Smile | Expressions (HAPPY score) | grins, waves its little arms, and gets +10 XP when the smile counts |
+| Look surprised | Expressions (SURPRISE score) | opens its eyes and mouth wide |
+| Blink | Blinking | blinks back at you |
+| Talk | Talking | moves its mouth along with you |
+| Breathe | Breathing trace | its body gently rises and falls with yours |
 
-The HAPPY score jumps around a lot, so not every twitch counts. A smile only counts if the score stays above 60% for half a second, and then you have to relax your face before the next one counts. One long grin is one smile, and you can't cheat by holding it forever.
+The HAPPY score jumps around a lot, so not every twitch counts. A smile only counts if the score stays above 60% for half a second, and then you have to relax your face before the next one. One long grin is one smile. XP and the charity pledge both come from that same smile count, so a smile can't be rewarded twice.
 
-Each smile is also matched to the joke that was on screen when it started. That's how the monster knows you're a pun person, and it's how the joke reel learns to show you more of what works on you.
+Each smile is also matched to the joke that was on screen when it started. That's how the monster knows you're an animal lover, and how the joke cards learn to show you more of what works on you.
 
-I really didn't want to fake anything, so there's a **Live signals** panel under the smile meter. It shows which SDK signals are actually coming in right now. If one never shows up, the monster just doesn't use it.
+I really didn't want to fake anything, so there's a **Live signals** panel in the game that shows which SDK signals are actually coming in. If one never shows up, the monster just doesn't use it. (On the home screen the monster does its own idle bounce and blink, but that's just animation, not your signals.)
 
-There's also a simulate mode (`npm run simulate`) so I could build the UI without burning API credits. It uses keyboard keys instead of the camera, and a big yellow banner says "SIMULATED SIGNALS" the whole time so it can't be mistaken for the real thing.
+There's also a simulate mode (`npm run simulate`) so I could build the game without using up API credits. It uses keyboard keys instead of the camera, and a big yellow "SIMULATED SIGNALS" banner stays on screen the whole time.
 
 ## Prize Categories
 
@@ -91,34 +91,34 @@ I'm entering both: **Most Creative or Delightful Use** and **Best Thoughtful Rea
 
 ### Most Creative or Delightful Use
 
-Most camera demos measure you. I wanted your smile to *grow* something. The monster copies your face and your blinks, and becomes a different creature depending on your sense of humour, so no two monsters look the same. Sponsor Snacks turn sponsors into part of the game too: Grandma's banana joke can literally leave a heart on your monster. And Try Not to Smile is a fundraiser where your sponsors are hoping you lose.
+Most camera demos measure you. Here your face *brings a world back to life*. The monster blinks when you blink, talks when you talk and breathes with you, so it feels like it's really looking at you. It grows into a different creature depending on your sense of humour, and you can watch grey hills turn into flowers, trees and rainbows because you smiled. I wanted the first reaction to be "awww, I want to help it".
 
 ### Best Thoughtful Real-World Use
 
-Small fundraisers, like a class, an office team or a family raising money for a food bank, usually do runs, walks or bake sales. Those take planning, and not everyone can run. This is a sponsored challenge you can do in two minutes at your desk.
+Small fundraisers, like a class, an office team or a family raising money for a food bank, usually do runs, walks or bake sales. Those take planning, and not everyone can run. This is a sponsored challenge you can do in a couple of minutes at your desk, and it's fun enough that people actually want to.
 
-I tried to keep the money part honest and simple:
+I tried to keep the money part honest:
 
-- No account and no payments. The app tracks pledges, and sponsors donate to the charity themselves.
-- Pledged and donated are shown separately everywhere: home screen, receipt and the CSV statement.
-- Every sponsor sets a cap, so nobody gets a surprise bill.
-- Hints from the SDK are turned into plain words, like "It's a bit dark. Add some light."
-- The camera can't turn on until you agree to how it's used, and nothing is recorded.
+- The player never pays anything. The app only tracks what sponsors promised, and sponsors donate to the charity themselves.
+- **Pledged** and **confirmed donated** are shown separately everywhere: the home screen, the receipt and the CSV.
+- Every sponsor sets a cap.
+- The game stuff (XP, levels) and the charity stuff are kept apart, so a level-up never looks like money was paid.
+- The camera only turns on when you start a game, and nothing is recorded.
 - It's a game. It doesn't say anything about your health or feelings.
 
 ## Consent and Data Handling
 
-- **Camera consent:** the first screen explains how the camera is used, and you have to tick a box before you can do anything. The camera only turns on when you start a session and turns off when it ends. A "Live, not recorded" label shows while it's on. The app only asks for the camera, never the microphone. (Talking is detected from the video.)
+- **Camera consent:** after the story, a consent screen explains how the camera is used, and you have to tick a box before you can play. The camera is never on during the story, the consent screen or the home screen. It only turns on when you pick a game and turns off when the game ends. A "Live, not recorded" label shows while it's on. The app only asks for the camera, never the microphone. (Talking is detected from the video.)
 - **Only with people who agree:** the consent screen asks you to only count your own smiles, or smiles of people who know and agree. It must not be used to watch anyone secretly.
-- **What's processed:** camera frames go to the SmartSpectra SDK inside the app, get analysed on your computer, and are thrown away. Smile Monster reads the expression scores, blink and talking flags, the breathing trace (if you turned it on) and pulse (if you turned it on), and only uses them in memory to draw the monster and count smiles.
-- **What's saved on your computer:** your consent date, settings, the charity and goal, sponsor names, rates, caps, their snack jokes and the donations you marked as confirmed, the monster (how many smiles it ate and of which joke type), and a total for each session (date, length, number of smiles, amount pledged).
+- **What's processed:** camera frames go to the SmartSpectra SDK inside the app, get analysed on your computer, and are thrown away. Smile Monster reads the expression scores, blink and talking flags, the breathing trace (if on) and pulse (if on), and only uses them in memory to animate the monster and count smiles.
+- **What's saved on your computer:** whether you've seen the story, your consent date, settings (including music and volume), the charity and goal, sponsor names, rates, caps, their snack jokes and the donations you marked as confirmed, the monster (how many smiles it got and of which joke type), and a total for each game (date, length, number of smiles, amount pledged).
 - **What's never saved:** video, photos, face data, expression scores, blink, talking or breathing data, or pulse values.
-- **What leaves your computer:** nothing, unless you save the Smile Receipt or the pledge CSV and send it to someone yourself. There's no server, account, analytics or ads.
+- **What leaves your computer:** nothing, unless you save the Smile Receipt or the pledge CSV and send it to someone yourself. There's no server, account, analytics or ads. The music and art are made inside the app, so nothing is downloaded for them either.
 - **SDK telemetry:** the SDK connects to Presage to check the API key. It can also send an anonymous diagnostics summary (no video, no measurements, no identifiers, according to Presage's docs). That's on by default in the SDK, but Smile Monster turns it off unless you choose to share it.
-- **Keeping and deleting:** your data stays until you delete it. "Delete all my data" in Privacy & data wipes everything, including your consent. You can also throw away one session from its summary screen, which also undoes what it fed the monster.
+- **Keeping and deleting:** your data stays until you delete it. "Delete all my data" in Privacy & data wipes everything, including your consent. You can also throw away one game from its summary screen, which also undoes what it gave the monster.
 - **AI services:** none. The "learns your humour" bit is simple counting inside the app. The SDK's optional LLM Insights feature isn't used.
 - **Not medical:** no diagnosis, no treatment, no health or emotion claims. It's just a game.
 
 ## Agent Session
 
-I used Claude Code as a coding helper along the way, mainly for digging through the SDK docs, the smile-counting and monster logic, tests and the UI. Here's the session (keys and personal info removed): AGENT_SESSION_URL
+I used Claude Code as a coding helper along the way, mainly for digging through the SDK docs, the smile-counting and monster logic, the music, tests and the UI. Here's the session (keys and personal info removed): AGENT_SESSION_URL

@@ -3,7 +3,7 @@
 // contains a camera frame, a face, or any signal values. Pledges are labelled as promises.
 
 const W = 1080, H = 1560;
-const INK = '#2b2118', MUTED = '#7a6a5a', CORAL = '#ef6f5e', PURPLE = '#7b4cd8';
+const INK = '#4a3b5c', MUTED = '#7d6f8f', CORAL = '#e86b93', PURPLE = '#6a54b8';
 
 function svgToImage(svg) {
   return new Promise((resolve) => {
@@ -40,9 +40,9 @@ function dashed(c, y) {
 /**
  * @param {object} r
  * @param {string} r.title           "Feed the monster" | "Try Not to Smile"
- * @param {string} r.monsterSvg      standalone SVG markup of the monster in its jar
- * @param {string} r.monsterName     e.g. "Fluffy Furball"
- * @param {string} r.stageLabel      e.g. "Hatchling (stage 3 of 4)"
+ * @param {string} r.monsterSvg      standalone SVG markup of the monster
+ * @param {string} r.monsterName     e.g. "Fluffy Furbun"
+ * @param {string} r.stageLabel      e.g. "Level 3 · The Power of Joy"
  * @param {string} r.headline        e.g. "12 qualifying smiles"
  * @param {string} r.pledged         this session, e.g. "$1.80"
  * @param {string} r.cause           selected charity / cause
@@ -60,13 +60,17 @@ export async function drawReceipt(r) {
   const c = canvas.getContext('2d');
   const font = (w, s) => `${w} ${s}px ui-rounded, "SF Pro Rounded", "Nunito", system-ui, "Segoe UI", sans-serif`;
 
-  c.fillStyle = '#ffe2a8';
+  const bg = c.createLinearGradient(0, 0, 0, H);
+  bg.addColorStop(0, '#ffd6e8');
+  bg.addColorStop(0.5, '#e3dcff');
+  bg.addColorStop(1, '#cdeedd');
+  c.fillStyle = bg;
   c.fillRect(0, 0, W, H);
   c.fillStyle = '#fffdf8';
   c.beginPath();
   c.roundRect(70, 60, W - 140, H - 120, 36);
   c.fill();
-  c.fillStyle = '#ffe2a8';
+  c.fillStyle = '#cdeedd';
   for (let x = 70; x < W - 70; x += 40) {
     c.beginPath();
     c.moveTo(x, H - 60);
@@ -160,7 +164,7 @@ export async function drawReceipt(r) {
 
   c.fillStyle = MUTED;
   c.font = font(700, 24);
-  c.fillText('Pledged means promised, not paid. Smile Jar processes no payments:', W / 2, H - 185);
+  c.fillText('Pledged means promised, not paid. Smile Monster processes no payments:', W / 2, H - 185);
   c.fillText('sponsors donate to the charity directly.', W / 2, H - 153);
   c.font = font(600, 22);
   c.fillText('Counted live by the Presage SmartSpectra SDK · nothing recorded · #presagechallenge', W / 2, H - 112);

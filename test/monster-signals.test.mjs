@@ -1,6 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { STAGES, stageFor, traitsFor, monsterName, monsterSvg, emptyMonster, tier } from '../src/monster.js';
+import { STAGES, stageFor, traitsFor, monsterName, monsterSvg, emptyMonster, tier, xpFor, worldTier, faceFor } from '../src/monster.js';
+import { worldSvg } from '../src/world.js';
 import { SignalMonitor, BlinkTracker, talkingNow, BreathNormalizer } from '../src/signals.js';
 import { confirmedTotal, pledgeLedger, pledgeStatementCsv } from '../src/pledges.js';
 import { normalizeSponsor, defaultState } from '../src/store.js';
@@ -8,17 +9,51 @@ import { HumourModel } from '../src/humour.js';
 import { JOY_REEL } from '../src/joy-reel.js';
 import { wrapText } from '../src/receipt.js';
 
-test('four stages in order: Egg, Sleepy Blob, Hatchling, Final Monster', () => {
-  assert.deepEqual(STAGES.map((s) => s.label), ['Egg', 'Sleepy Blob', 'Hatchling', 'Final Monster']);
+test('five levels, one per story chapter, keeping the old stage keys', () => {
+  assert.deepEqual(STAGES.map((s) => s.chapter), ['The First Smile', 'The Awakening', 'The Power of Joy', 'Spread the Happiness', 'The World of Smiles']);
+  assert.deepEqual(STAGES.map((s) => s.key), ['egg', 'blob', 'hatchling', 'sprite', 'final']);
   assert.equal(stageFor(0).key, 'egg');
   assert.equal(stageFor(2).key, 'egg');
   assert.equal(stageFor(3).key, 'blob');
-  assert.equal(stageFor(10).key, 'hatchling');
-  assert.equal(stageFor(20).key, 'final');
-  assert.equal(stageFor(500).key, 'final');
+  assert.equal(stageFor(8).key, 'hatchling');
+  assert.equal(stageFor(15).key, 'sprite');
+  assert.equal(stageFor(25).key, 'final');
+  assert.equal(stageFor(500).level, 5);
   assert.equal(stageFor(1).toNext, 2);
-  assert.equal(stageFor(20).next, null);
-  assert.equal(stageFor(20).progress, 1);
+  assert.equal(stageFor(25).next, null);
+  assert.equal(stageFor(25).progress, 1);
+  // each level has its own personality
+  assert.equal(new Set(STAGES.map((s) => s.mood)).size, 5);
+});
+
+test('XP comes only from qualifying smiles, 10 each', () => {
+  assert.deepEqual(xpFor(0), { xp: 0, level: 1, intoLevel: 0, levelSize: 30, toNext: 30 });
+  const x = xpFor(5);
+  assert.equal(x.xp, 50);
+  assert.equal(x.level, 2);
+  assert.equal(x.intoLevel, 20);
+  assert.equal(x.levelSize, 50);
+  assert.equal(xpFor(30).levelSize, null);
+  assert.equal(xpFor(30).toNext, 0);
+});
+
+test('the world comes back to life as the monster grows', () => {
+  assert.equal(worldTier(0), 0);
+  assert.equal(worldTier(1), 1);
+  assert.equal(worldTier(3), 2);
+  assert.equal(worldTier(25), 5);
+  const grey = worldSvg({ tier: 0 });
+  const alive = worldSvg({ tier: 5 });
+  assert.match(grey, /tier-0/);
+  assert.doesNotMatch(grey, /w-bloom/, 'no blooming flowers in the grey world');
+  assert.doesNotMatch(grey, /w-firefly/);
+  assert.match(worldSvg({ tier: 1 }), /w-firefly/, 'first lights at tier 1');
+  assert.match(worldSvg({ tier: 2 }), /w-bloom/, 'flowers at tier 2');
+  assert.doesNotMatch(worldSvg({ tier: 2 }), /w-sway/);
+  assert.match(worldSvg({ tier: 3 }), /w-sway/, 'trees at tier 3');
+  assert.match(alive, /w-float/, 'floating hearts in the full world');
+  assert.match(worldSvg({ tier: 0, spark: true }), /w-spark/);
+  assert.doesNotMatch(alive, /https?:\/\/(?!www\.w3\.org)/, 'no external assets');
 });
 
 test('joke categories change the monster', () => {
@@ -31,15 +66,20 @@ test('joke categories change the monster', () => {
   assert.equal(t.horns, 3);
   assert.equal(t.fur, 1);
   assert.equal(t.glow, 0);
-  assert.equal(monsterName(t, 'final'), 'Punny Furball');
-  assert.equal(monsterName(t, 'egg'), 'Mystery Egg');
-  assert.equal(monsterName(traitsFor(emptyMonster()), 'blob'), 'Little Blob');
+  assert.equal(monsterName(t, 'final'), 'Giggly Furbun');
+  assert.equal(monsterName(traitsFor(emptyMonster()), 'egg'), 'Little Mochi');
+  assert.equal(monsterName(traitsFor(emptyMonster()), 'blob'), 'Mochi');
 
   const other = emptyMonster();
   other.diet.Memory = 4;
   assert.notEqual(traitsFor(other).body, t.body);
-  assert.equal(monsterName(traitsFor(other), 'final'), 'Glowing Glowmoth');
+  assert.equal(monsterName(traitsFor(other), 'final'), 'Glowy Glimmer');
   assert.deepEqual([0, 1, 3, 6].map(tier), [0, 1, 2, 3]);
+  // traits show on the grown-up forms
+  const plain = monsterSvg({ stage: 'final', traits: traitsFor(emptyMonster()) });
+  const horny = monsterSvg({ stage: 'final', traits: t });
+  assert.ok(horny.length > plain.length);
+  assert.match(horny, /#fff6d6/, 'horns drawn');
 });
 
 test('sponsors whose snack made you smile add a heart in their colour', () => {
@@ -53,23 +93,32 @@ test('sponsors whose snack made you smile add a heart in their colour', () => {
   assert.doesNotMatch(svg, /#00ff00/);
 });
 
-test('monster SVG reflects stage and live signals', () => {
+test('the same monster at every level, and it mirrors live signals', () => {
   const t = traitsFor(emptyMonster());
-  const egg = monsterSvg({ stage: 'egg', traits: t, uid: 'x' });
-  assert.match(egg, /<svg/);
-  assert.match(egg, /x-jar/);
+  for (const s of STAGES) {
+    const svg = monsterSvg({ stage: s.key, traits: t, uid: 'x' });
+    assert.match(svg, /<svg/);
+    assert.match(svg, /class="m-eyes"/, `${s.key} has eyes`);
+    assert.match(svg, new RegExp(`level ${s.level ?? STAGES.indexOf(s) + 1}`));
+  }
+  assert.equal(faceFor('egg', {}), 'shy');
+  assert.equal(faceFor('final', {}), 'proud');
+  assert.equal(faceFor('final', { face: 'grin' }), 'grin');
+  assert.equal(faceFor('blob', { face: 'wow' }), 'wow');
+  assert.equal(faceFor('hatchling', { talking: true, talkOpen: true }), 'talk-open');
   const open = monsterSvg({ stage: 'hatchling', traits: t, live: { face: 'flat' } });
   const shut = monsterSvg({ stage: 'hatchling', traits: t, live: { face: 'flat', eyesClosed: true } });
   assert.notEqual(open, shut);
-  assert.ok((open.match(/fill="#fff" stroke/g) || []).length >= 2, 'open eyes drawn');
+  assert.ok((open.match(/fill="#fff"/g) || []).length >= 2, 'sparkly eye highlights');
+  assert.ok(!(shut.match(/<ellipse[^>]*fill="#4a3b5c"/g) || []).some((e) => /rx="1[0-9]/.test(e)), 'closed eyes have no pupils');
   const breatheIn = monsterSvg({ stage: 'final', traits: t, live: { breath: 1 } });
   const breatheOut = monsterSvg({ stage: 'final', traits: t, live: { breath: 0 } });
   assert.match(breatheIn, /scale\(1 1\.050\)/);
   assert.match(breatheOut, /scale\(1 0\.950\)/);
-  const noBreath = monsterSvg({ stage: 'final', traits: t, live: { breath: null } });
-  assert.match(noBreath, /scale\(1 1\.000\)/);
-  assert.match(monsterSvg({ stage: 'final', traits: t, live: { talking: true } }), />\?</);
-  assert.match(monsterSvg({ stage: 'blob', traits: t }), />z</); // sleepy blob snoozes
+  assert.match(monsterSvg({ stage: 'final', traits: t, live: { breath: null } }), /scale\(1 1\.000\)/);
+  assert.match(monsterSvg({ stage: 'final', traits: t, live: { talking: true } }), /♪/);
+  assert.match(monsterSvg({ stage: 'blob', traits: t }), />z</); // the sleepyhead snoozes until you smile
+  assert.doesNotMatch(monsterSvg({ stage: 'blob', traits: t, live: { face: 'grin' } }), />z</);
   assert.match(monsterSvg({ stage: 'egg', traits: t, standalone: true }), /xmlns="http:\/\/www.w3.org\/2000\/svg"/);
 });
 

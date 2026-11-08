@@ -1,11 +1,11 @@
-// main.js: Electron main process for Smile Jar.
+// main.js: Electron main process for Smile Monster (formerly Smile Jar).
 //
 // 1. Points the SmartSpectra binding at the bundled native runtime when packaged.
 // 2. Creates one sandboxed window that loads only the local index.html.
 // 3. Wires the SmartSpectra IPC bridge (the SDK runs here, frames come from the renderer).
 // 4. Grants camera (video only, no microphone) to the local page and nothing else.
 //    The renderer only asks for the camera after the user has given consent in-app
-//    and pressed "Start Smile Session".
+//    and picked a game. It is never requested during the story or on the home screen.
 
 'use strict';
 
@@ -23,14 +23,17 @@ if (app.isPackaged && !process.env.SMARTSPECTRA_CAPI_PATH) {
 
 const { bindSmartSpectraIpc } = require('@smartspectra/node-sdk/main');
 
+// The packaged app was called "Smile Jar". Keep its data folder so existing saves still load.
+if (app.isPackaged) app.setPath('userData', path.join(app.getPath('appData'), 'Smile Jar'));
+
 function createWindow() {
   const win = new BrowserWindow({
     width: 1200,
     height: 820,
     minWidth: 900,
     minHeight: 640,
-    backgroundColor: '#fff8ef',
-    title: 'Smile Jar',
+    backgroundColor: '#fdf0ff',
+    title: 'Smile Monster',
     webPreferences: {
       preload: require.resolve('@smartspectra/node-sdk/preload'),
       contextIsolation: true,

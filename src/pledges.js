@@ -59,8 +59,8 @@ export function pledgeStatementCsv(campaign, sessions) {
   const { total } = pledgeFor(campaign.sponsors, totalSmiles);
   const ledger = pledgeLedger(campaign.sponsors, totalSmiles);
   const rows = [
-    ['Smile Jar pledge statement'],
-    ['Note', 'Pledged amounts are promises tracked by Smile Jar. Smile Jar does not process payments. Please donate directly to the charity.'],
+    ['Smile Monster pledge statement'],
+    ['Note', 'Pledged amounts are promises tracked by Smile Monster. Smile Monster does not process payments. Please donate directly to the charity.'],
     ['Cause', campaign.cause],
     ['Total qualifying smiles', totalSmiles],
     ['Total pledged', formatCents(total)],
