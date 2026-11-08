@@ -9,7 +9,11 @@
 import { SmileDetector, DEFAULTS as SMILE, happyScore, mascotFace } from './src/smile-detector.js';
 import { pledgeFor, sessionPledge, marginalRate, formatCents, pledgeStatementCsv } from './src/pledges.js';
 import * as store from './src/store.js';
-import { JOY_REEL, shuffled } from './src/joy-reel.js';
+import { JOY_REEL } from './src/joy-reel.js';
+import { HumourModel, personaFor } from './src/humour.js';
+import { JarVoice } from './src/jar-voice.js';
+import { sfx, setMuted, isMuted } from './src/sounds.js';
+import { drawReceipt } from './src/receipt.js';
 import { SimulatedSDK } from './src/simulator.js';
 
 const {
@@ -45,13 +49,14 @@ function persist() {
 
 // ---------------------------------------------------------------- jar SVG
 let jarSeq = 0;
+const STANDALONE_JAR_CSS = '.jar-lid{fill:#f4a72a;stroke:#2b2118;stroke-width:2.5}.jar-glass{fill:none;stroke:#2b2118;stroke-width:3}.jar-fill{fill:#ffe2a8}.jar-coin{fill:#f4a72a;stroke:#b77610;stroke-width:1.5}.jar-shine{stroke:#fff;stroke-opacity:.7;stroke-width:5;stroke-linecap:round}.jar-smile{fill:none;stroke:#2b2118;stroke-width:3;stroke-linecap:round}.jar-grin,.jar-eye{fill:#2b2118}';
 const MOUTHS = {
   smile: '<path d="M78 120 q22 22 44 0" class="jar-smile"/>',
   flat: '<path d="M84 128 h32" class="jar-smile"/>',
   grin: '<path d="M72 114 h56 q-4 34 -28 34 q-24 0 -28 -34 z" class="jar-grin"/>',
   wow: '<ellipse cx="100" cy="132" rx="11" ry="15" class="jar-grin"/>',
 };
-function jarSvg(fraction, coins, face = 'smile') {
+function jarSvg(fraction, coins, face = 'smile', standalone = false) {
   const clipId = `jarclip${++jarSeq}`;
   const f = Math.max(0, Math.min(1, fraction));
   const top = 40, bottom = 196, h = bottom - top;
@@ -66,7 +71,8 @@ function jarSvg(fraction, coins, face = 'smile') {
     coinDots.push(`<circle cx="${x}" cy="${y}" r="6" class="jar-coin"/>`);
   }
   return `
-  <svg viewBox="0 0 200 220" class="jar" role="img" aria-label="Jar ${Math.round(f * 100)} percent full">
+  <svg ${standalone ? 'xmlns="http://www.w3.org/2000/svg" width="200" height="220"' : ''} viewBox="0 0 200 220" class="jar" role="img" aria-label="Jar ${Math.round(f * 100)} percent full">
+    ${standalone ? `<style>${STANDALONE_JAR_CSS}</style>` : ''}
     <defs><clipPath id="${clipId}"><path d="M40 44 h120 v132 a24 24 0 0 1 -24 24 h-72 a24 24 0 0 1 -24 -24 z"/></clipPath></defs>
     <rect x="52" y="10" width="96" height="22" rx="6" class="jar-lid"/>
     <g clip-path="url(#${clipId})">
@@ -227,11 +233,51 @@ function showError(msg) {
 
 function nextCard() {
   if (!session) return;
-  session.reelIdx = (session.reelIdx + 1) % session.reel.length;
-  const card = session.reel[session.reelIdx];
+  const card = session.humour.next(Date.now());
   $('reel-kind').textContent = card.kind;
   $('reel-text').textContent = card.text;
+  const fav = session.humour.favourite();
+  const learned = session.humour.lastPickWasLearned && fav === card.kind;
+  $('reel-why').textContent = learned
+    ? (session.mode === 'poker' ? `Picked to crack you: ${card.kind.toLowerCase()}s got you before` : `Picked for you: you smile at ${card.kind.toLowerCase()}s`)
+    : '';
+  if (learned && !session.toldLearned) {
+    const line = session.voice.onLearned(Date.now());
+    if (line) { session.toldLearned = true; speak(line.text); }
+  }
+  renderTaste();
 }
+
+function renderTaste() {
+  const rows = session.humour.summary().filter((r) => r.smiles > 0);
+  $('s-taste').textContent = rows.length
+    ? `${session.mode === 'poker' ? 'Your weak spots' : 'What makes you smile'}: ${rows.map((r) => `${r.kind} ${r.smiles}`).join(' \u00b7 ')}`
+    : '';
+}
+
+function speak(text) {
+  const b = $('s-speech');
+  b.textContent = text;
+  b.hidden = false;
+  void b.offsetWidth;
+  b.classList.remove('pop');
+  void b.offsetWidth;
+  b.classList.add('pop');
+  clearTimeout(speak.t);
+  speak.t = setTimeout(() => { b.hidden = true; }, 2600);
+}
+
+function syncMute() {
+  setMuted(!state.settings.sound);
+  const btn = $('btn-mute');
+  btn.textContent = state.settings.sound ? 'Sound on' : 'Sound off';
+  btn.setAttribute('aria-pressed', String(!state.settings.sound));
+}
+$('btn-mute').addEventListener('click', () => {
+  state.settings.sound = !state.settings.sound;
+  persist();
+  syncMute();
+});
 $('btn-next-card').addEventListener('click', () => { nextCard(); restartReelTimer(); });
 function restartReelTimer() {
   clearInterval(session?.reelTimer);
@@ -326,6 +372,12 @@ function onSmile(peakHappy = 0) {
     session.straightSince = now;
   }
   dropCoin(worth, golden);
+  session.humour.creditSmile(now);
+  renderTaste();
+  if (session.mode === 'poker') { sfx.crack(); session.voice.resetStreak(); }
+  else if (golden) sfx.golden();
+  else { sfx.coin(); if (session.combo > 1) sfx.combo(session.combo); }
+  speak(session.voice.onSmile({ mode: session.mode, golden, combo: session.combo }, now).text);
   if (session.mode === 'poker') popBadge(session.combo > 1 ? `Cracked again! x${session.combo}` : 'You cracked!', 'crack');
   else if (golden) popBadge(session.combo > 1 ? `Golden grin! Combo x${session.combo}` : 'Golden grin!', 'gold');
   else if (session.combo > 1) popBadge(`Combo x${session.combo}!`, 'combo');
@@ -345,10 +397,15 @@ function handleMetrics(m) {
     updateMeter(detector.level);
     const face = mascotFace(expressions[expressions.length - 1]);
     if (face !== session.face) {
-      if (face === 'wow' && session.mode !== 'poker') popBadge('Whoa!', 'wow');
+      if (face === 'wow' && session.mode !== 'poker') { popBadge('Whoa!', 'wow'); sfx.wow(); }
       session.face = face;
       renderSessionJar();
     }
+    const now = Date.now();
+    const line = session.voice.onTick({
+      mode: session.mode, happy: detector.level, face, streakMs: now - session.straightSince,
+    }, now);
+    if (line) speak(line.text);
   }
   const pr = m.cardio?.pulseRate;
   if (pr?.length && state.settings.showPulse) {
@@ -414,8 +471,9 @@ async function startSession(mode = 'smile') {
     deadline: Date.now() + state.settings.sessionMinutes * 60000,
     smiles: 0,
     before: store.totalSmiles(state),
-    reel: shuffled(JOY_REEL),
-    reelIdx: -1,
+    humour: new HumourModel(JOY_REEL),
+    voice: new JarVoice(),
+    toldLearned: false,
     mode,
     face: 'flat',
     combo: 0,
@@ -433,6 +491,9 @@ async function startSession(mode = 'smile') {
   $('s-unit').textContent = poker ? 'cracks' : 'smiles';
   $('s-streak').hidden = !poker;
   $('s-badge').hidden = true;
+  $('s-speech').hidden = true;
+  syncMute();
+  sfx.start();
   $('pulse-row').hidden = !state.settings.showPulse;
   $('pulse-value').textContent = '--';
   $('reel-text').hidden = false;
@@ -443,6 +504,7 @@ async function startSession(mode = 'smile') {
   restartReelTimer();
   show('session');
   renderSession();
+  speak(session.voice.start(mode, Date.now()).text);
   session.timer = setInterval(renderSession, 500);
 
   try {
@@ -506,7 +568,23 @@ async function endSession() {
   if (s.mode === 'poker') extras.push(`Longest straight face: ${fmtSecs(s.bestStreakMs)}`);
   if (s.bestCombo > 1) extras.push(`Best combo: x${s.bestCombo}`);
   if (s.golden > 0) extras.push(`Golden grins: ${s.golden}`);
+  const fav = s.humour.favourite();
+  const persona = fav
+    ? (s.mode === 'poker' ? `Your weak spot: ${fav.toLowerCase()}s` : `You're ${personaFor(fav)}`)
+    : (s.mode === 'poker' ? 'Unbreakable. Nothing cracked you.' : '');
   $('sum-extras').textContent = extras.join(' \u00b7 ');
+  $('sum-persona').textContent = persona;
+  lastReceipt = {
+    title: s.mode === 'poker' ? 'Try Not to Smile' : 'Smile Session',
+    headline: `${record.smiles} ${$('sum-unit').textContent}`,
+    pledged: formatCents(record.pledgedCents),
+    cause: state.campaign.cause,
+    lines: extras,
+    persona,
+    jarSvg: jarSvg(total / goal, store.totalSmiles(state), 'grin', true),
+    date: new Date(),
+  };
+  $('receipt-preview').hidden = true;
   $('sum-money').textContent = formatCents(record.pledgedCents);
   $('sum-cause').textContent = state.campaign.cause;
   $('sum-detail').textContent = `The jar now holds ${formatCents(total)} of your ${formatCents(goal)} goal.`;
@@ -514,6 +592,24 @@ async function endSession() {
   ending = false;
 }
 $('btn-end').addEventListener('click', endSession);
+
+let lastReceipt = null;
+$('btn-receipt').addEventListener('click', async () => {
+  if (!lastReceipt) return;
+  const blob = await drawReceipt(lastReceipt);
+  if (!blob) { toast('Could not draw the receipt.'); return; }
+  const url = URL.createObjectURL(blob);
+  const img = $('receipt-preview');
+  if (img.dataset.url) URL.revokeObjectURL(img.dataset.url);
+  img.src = url;
+  img.dataset.url = url;
+  img.hidden = false;
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = `smile-receipt-${new Date().toISOString().slice(0, 10)}.png`;
+  a.click();
+  toast('Smile Receipt saved. Send it to your sponsors!');
+});
 $('btn-done').addEventListener('click', () => { renderHome(); show('home'); });
 $('btn-discard').addEventListener('click', () => {
   if (lastSummary) state.sessions = state.sessions.filter((x) => x.id !== lastSummary.id);

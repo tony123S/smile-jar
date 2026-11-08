@@ -10,6 +10,12 @@ Built for the DEV Presage Challenge (`#presagechallenge`).
 
 **Live reactions:** the jar's face mirrors yours in real time (it grins when the SDK's HAPPY score is high and drops its jaw on SURPRISE), quick smiles in a row build a combo, and a huge grin (HAPPY ≥ 92%) drops a golden coin. These are visual only: every counted smile is worth the same pledge.
 
+**A jar that talks back:** coin clinks, golden-coin jingles and a speech bubble. In Try Not to Smile it teases you as the live HAPPY score creeps up ("Don't you dare...") and gloats when you crack. Sounds are synthesized in the app (no audio files) and can be muted.
+
+**Jokes that learn your humour:** cards come in four kinds (puns, animal facts, memories, picture-this). Each counted smile is credited to the card that was on screen when the smile started, and the reel serves more of whatever kind works on you. In Try Not to Smile it hunts for your weak spot instead. The model lives in memory for one session only and is never saved.
+
+**Smile Receipt:** at the end, save a shareable PNG card with the jar, your total, best combo and your humour type ("You're an animal lover") to send to sponsors. It contains no image of you.
+
 - **Live Presage signal used:** facial expressions (`EXPRESSIONS`, the HAPPY score), from the SDK's face bundle.
 - **Optional second signal:** live pulse rate (`PULSE_RATE`, cardio bundle), shown just for fun.
 - **Platform:** desktop Electron app (macOS Apple Silicon, Windows x64, Linux x64/arm64) using `@smartspectra/node-sdk`.
@@ -89,6 +95,8 @@ Want to see pulse too? Tick **Also show live pulse** on the home screen before s
 
 **What is stored.** One record in the app's local storage on this device (`smilejar.v1`), containing: the consent version and the time it was given; settings (session length, pulse on/off, diagnostics on/off); the cause name and goal; sponsor names, rates and caps as typed by the user; and per-session totals (end time, duration, mode, number of smiles, pledged amount).
 
+**Smile Receipt and humour profile.** The receipt PNG is generated on the device only when the user clicks Save, and contains the session totals and humour type, never a camera image. The humour profile (which kind of card made you smile) is kept in memory for the current session and discarded when it ends.
+
 **What is never stored or sent by Smile Jar.** Video, images, screenshots, face landmarks, expression scores, pulse values, or any biometric data. A video clip the user chooses to play is opened from their disk through a temporary local URL and is never copied or uploaded.
 
 **Sharing.** None. Smile Jar has no backend, no account, no analytics and no ads. The only data that leaves the app is the pledge statement CSV, and only when the user exports it and sends it to someone themselves. It contains the cause, sponsor names and amounts, and session dates and smile counts.
@@ -109,7 +117,11 @@ renderer.js             UI + SmartSpectra renderer SDK wiring
 src/smile-detector.js   Expression stream → counted smiles (hysteresis)
 src/pledges.js          Sponsor caps, per-session pledge, CSV statement
 src/store.js            The single local record (and wipe)
-src/joy-reel.js         Built-in jokes, facts and prompts
+src/joy-reel.js         Built-in cards, grouped by kind
+src/humour.js           Learns which kind of card makes you smile (in memory only)
+src/jar-voice.js        What the jar says, and when
+src/sounds.js           Web Audio sound effects (no files)
+src/receipt.js          Draws the Smile Receipt PNG
 src/simulator.js        UI-only fake signal for `npm run simulate`
 test/                   node:test unit tests
 ```

@@ -11,7 +11,7 @@ export function defaultState() {
   return {
     version: 1,
     consent: null, // { version, acceptedAt }
-    settings: { telemetry: false, showPulse: false, sessionMinutes: 2 },
+    settings: { telemetry: false, showPulse: false, sessionMinutes: 2, sound: true },
     campaign: {
       cause: 'Local food bank',
       goalCents: 2500,

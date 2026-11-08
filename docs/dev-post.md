@@ -63,6 +63,9 @@ sdk.on('metrics', (buf) => {
 - **A jar that copies your face.** The jar mascot grins when your HAPPY score is high and drops its jaw when the SDK sees SURPRISE, live, so you can literally see the signal.
 - **Combos and golden coins.** Smiles within a few seconds of each other build a combo, and a huge grin (HAPPY at 92% or more) drops a golden coin. These are just for fun; every smile is worth the same pledge.
 - **Try Not to Smile.** The same signal flips into a game: a "straight face" timer runs until the SDK catches you smiling, then resets with a "You cracked!" badge.
+- **A jar that talks back.** Every smile clinks into the jar with a speech-bubble reaction. In Try Not to Smile, the jar watches your live HAPPY score and teases you as it creeps toward the threshold ("Don't you dare..."), then gloats "GOTCHA!" the moment the SDK catches you.
+- **Jokes that learn your humour.** Cards come in four kinds: puns, animal facts, memories and picture-this. Each counted smile is credited to the card that was on screen when the smile *started*, and the reel samples the next card from what's working, so it shows "Picked for you: you smile at animal facts". In Try Not to Smile it uses the same model to hunt for your weak spot. The live signal is literally choosing the content.
+- **A shareable Smile Receipt.** At the end you can save a PNG receipt with the jar, your total, best combo and humour type ("You're an animal lover") to send to sponsors. It never contains a picture of you.
 - **Coins in the jar.** When a smile counts, a coin showing what that smile was worth ("+15¢") drops into the jar, and the session total and jar fill update immediately. Once a sponsor hits their cap, the next smile is worth less, and the app tells you.
 - **Counting only real smiles.** The raw score jumps around, so `SmileDetector` adds hysteresis. A smile counts when HAPPY stays at or above 60% for half a second on stable samples. The detector re-arms only after HAPPY falls below 35% for 0.7 seconds. One long grin counts once, a flicker doesn't count, and you can't farm the jar by holding a smile. The detector is plain JavaScript with unit tests that feed it SDK-shaped expression samples.
 - **Coaching from the SDK.** `validationStatus` codes (no face, too dark, face too far, and so on) become friendly hints over the camera preview, so you know when the signal is reliable.
@@ -72,7 +75,7 @@ sdk.on('metrics', (buf) => {
 
 **Most Creative or Delightful Use.**
 
-Most camera-vitals demos point the camera at you to measure something. Smile Jar flips that around and makes your smile the thing that does good. The inspiration was sponsored fun runs: people love backing a friend's effort, but running isn't for everyone. Smiling is something almost anyone can do from their desk, and it's contagious. The playful parts are a jar that pulls the same face as you, coins and golden coins dropping in, combos, and the Try Not to Smile mode, where your sponsors are rooting for you to fail. Smiling for charity turns out to be hard to do with a straight face.
+Most camera-vitals demos point the camera at you to measure something. Smile Jar flips that around and makes your smile the thing that does good. The inspiration was sponsored fun runs: people love backing a friend's effort, but running isn't for everyone. Smiling is something almost anyone can do from their desk, and it's contagious. The playful parts are a jar that pulls the same face as you and trash-talks you, a joke reel that figures out your sense of humour from your smiles, golden coins and combos, a Smile Receipt to brag with, and the Try Not to Smile mode, where your sponsors are rooting for you to fail. Smiling for charity turns out to be hard to do with a straight face.
 
 ## Consent and Data Handling
 
@@ -81,6 +84,7 @@ Most camera-vitals demos point the camera at you to measure something. Smile Jar
 - **Processing:** frames go from the camera to the SmartSpectra SDK inside the app, are analysed on-device, and are discarded. Smile Jar reads the expression scores (and pulse, if enabled) in memory only.
 - **Storage:** one local record on your device with your consent date, settings, cause, sponsor names/rates and per-session totals (date, length, smile count, pledged amount). No video, images, face data, expression scores or pulse values are ever saved.
 - **Sharing:** none. There's no backend, account, analytics or ads. The only thing that leaves the app is the CSV pledge statement, and only when you export and send it yourself.
+- **Humour profile and receipt:** which kind of card made you smile is kept in memory for the current session only. The Smile Receipt image is made on your device only when you click Save and contains totals, never a picture of you.
 - **Retention and deletion:** data is kept until you delete it. Privacy & data → Delete all my data wipes everything, including consent. Any single session can be discarded from its summary screen.
 - **SDK telemetry:** the SDK connects to Presage to validate the API key. Its aggregate diagnostics summary (no video, no measurements, no identifiers, per Presage's docs) is on by default in the SDK, but Smile Jar turns it off unless you opt in.
 - **AI services:** none. The SDK's optional LLM Insights feature isn't used.

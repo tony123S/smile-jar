@@ -4,7 +4,7 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <meta http-equiv="Content-Security-Policy"
-        content="default-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data:; worker-src 'self' blob:; media-src 'self' blob:; connect-src 'self' blob:; frame-src 'none'; object-src 'none';">
+        content="default-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob:; worker-src 'self' blob:; media-src 'self' blob:; connect-src 'self' blob:; frame-src 'none'; object-src 'none';">
   <title>Smile Jar</title>
   <link rel="stylesheet" href="./styles.css">
 </head>
@@ -120,6 +120,7 @@
         <div class="mode-head"><strong id="s-mode">Smile Session</strong> <span class="muted small" id="s-mode-help"></span></div>
         <div class="reel-kind" id="reel-kind">Joke</div>
         <div class="reel-text" id="reel-text">Loading something nice...</div>
+        <div class="reel-why" id="reel-why"></div>
         <video id="clip" class="clip" controls hidden></video>
         <div class="reel-actions">
           <button type="button" id="btn-next-card">Next</button>
@@ -128,6 +129,7 @@
             <span>Play my own clip</span>
           </label>
         </div>
+        <div class="taste small" id="s-taste"></div>
       </div>
 
       <aside class="side">
@@ -156,10 +158,12 @@
             <div class="small streak" id="s-streak" hidden></div>
           </div>
           <div class="badge" id="s-badge" hidden></div>
+          <div class="speech" id="s-speech" role="status" hidden></div>
         </div>
 
         <div class="error" id="error" hidden></div>
         <div class="actions">
+          <button type="button" id="btn-mute" aria-pressed="false">Sound on</button>
           <button type="button" class="primary" id="btn-end">End session</button>
         </div>
       </aside>
@@ -173,9 +177,12 @@
       <h1><span id="sum-smiles">0</span> <span id="sum-unit">smiles</span>, <span id="sum-money">$0.00</span> for <span id="sum-cause">a good cause</span></h1>
       <p class="muted" id="sum-detail"></p>
       <p class="extras" id="sum-extras"></p>
+      <p class="persona" id="sum-persona"></p>
+      <img id="receipt-preview" class="receipt-preview" alt="Your Smile Receipt" hidden>
       <p class="muted small">Camera is off. Only this session's date, length and smile count were saved on this device.</p>
       <div class="actions">
         <button type="button" id="btn-discard">Don't save this session</button>
+        <button type="button" class="ghost" id="btn-receipt">Save Smile Receipt</button>
         <button type="button" class="primary" id="btn-done">Back to the jar</button>
       </div>
     </section>

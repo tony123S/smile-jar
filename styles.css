@@ -121,6 +121,20 @@ button.ghost { border-color: var(--coral); color: var(--coral); font-weight: 650
 .badge.pop { animation: pop .35s cubic-bezier(.3, 1.6, .5, 1); }
 @keyframes pop { from { transform: scale(.4); opacity: 0; } to { transform: scale(1); opacity: 1; } }
 .extras { font-weight: 700; color: var(--coral); }
+.persona { font-weight: 800; font-size: 20px; color: #7b4cd8; margin: 4px 0 8px; }
+.receipt-preview { width: 260px; border-radius: 14px; box-shadow: var(--shadow); margin: 6px auto 0; display: block; border: 1px solid var(--line); }
+.reel-why { font-size: 13px; color: #7b4cd8; font-weight: 700; min-height: 18px; }
+.taste { position: absolute; left: 24px; right: 24px; bottom: 16px; color: var(--muted); font-weight: 600; }
+.speech {
+  position: absolute; left: 8px; top: -52px; max-width: 230px; background: var(--surface); color: var(--ink);
+  border: 2px solid var(--ink); border-radius: 16px; padding: 8px 12px; font-weight: 800; font-size: 14px; line-height: 1.25;
+  box-shadow: var(--shadow); z-index: 2;
+}
+.speech::after {
+  content: ""; position: absolute; left: 44px; bottom: -10px; width: 14px; height: 14px; background: var(--surface);
+  border-right: 2px solid var(--ink); border-bottom: 2px solid var(--ink); transform: rotate(45deg);
+}
+.speech.pop { animation: pop .35s cubic-bezier(.3, 1.6, .5, 1); }
 .eyebrow { text-transform: uppercase; letter-spacing: .08em; font-size: 12px; color: var(--muted); font-weight: 700; }
 .cause { font-size: 22px; font-weight: 700; }
 .big-money { font-size: 56px; font-weight: 800; letter-spacing: -.02em; font-variant-numeric: tabular-nums; line-height: 1.1; margin: 6px 0; }
