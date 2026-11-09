@@ -3,7 +3,7 @@
 // Every counted smile is credited to the card that was on screen when the smile *started*.
 // A smile is only counted after it has been held for a moment, so we look back LEAD_MS. The next card's kind is chosen by
 // Thompson-style sampling over (smiles + 1) / (shown + 2), so it explores early and exploits once
-// it has evidence. In Try Not to Smile mode the same model hunts for your "weak spot".
+// it has evidence.
 // Nothing here is saved: the model lives in memory and is discarded when the session ends.
 
 import { shuffled } from './joy-reel.js';
@@ -101,5 +101,5 @@ const PERSONAS = {
 };
 
 export function personaFor(kind) {
-  return PERSONAS[kind] || 'hard to crack';
+  return PERSONAS[kind] || 'full of surprises';
 }

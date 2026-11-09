@@ -39,7 +39,7 @@ function dashed(c, y) {
 
 /**
  * @param {object} r
- * @param {string} r.title           "Feed the monster" | "Try Not to Smile"
+ * @param {string} r.title           "Smile Monster"
  * @param {string} r.monsterSvg      standalone SVG markup of the monster
  * @param {string} r.monsterName     e.g. "Fluffy Furbun"
  * @param {string} r.stageLabel      e.g. "Level 3 · The Power of Joy"

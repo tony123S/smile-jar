@@ -2,7 +2,7 @@
 //
 // Kept: consent timestamp, settings, the campaign (cause, sponsors with their snack jokes,
 // pledge terms and confirmed donations), the monster's "diet" (how many smiles each joke
-// category earned, plus counts of surprise moments and Try Not to Smile sessions), and
+// category earned, plus a count of surprise moments), and
 // per-session totals. Never kept: video, images, face landmarks, expression scores, blink,
 // talking or breathing data, pulse values, or anything that identifies a person.
 
@@ -10,7 +10,9 @@ import { emptyMonster } from './monster.js';
 
 export const SPONSOR_COLOURS = ['#ef6f5e', '#2f8fd8', '#f4a72a', '#7b4cd8', '#2f9e6b', '#e05aa8'];
 
-export const STORAGE_KEY = 'smilejar.v1'; // kept from Smile Jar so existing saves still load
+export const STORAGE_KEY = 'smilemonster.v1';
+// Saves made by earlier versions of the app used this key. load() moves them across once.
+export const LEGACY_STORAGE_KEYS = ['smilejar.v1'];
 export const CONSENT_VERSION = 1;
 
 export function defaultState() {
@@ -53,16 +55,37 @@ function storage() {
   try { return globalThis.localStorage || null; } catch { return null; }
 }
 
+/**
+ * Move a save from an older key to the current one. The old copy is removed only after the new
+ * one has been written and reads back identical, so a failure can never lose progress.
+ */
+export function migrateLegacySave(st = storage()) {
+  if (!st) return false;
+  try {
+    if (st.getItem(STORAGE_KEY)) return false;
+    for (const key of LEGACY_STORAGE_KEYS) {
+      const raw = st.getItem(key);
+      if (!raw) continue;
+      JSON.parse(raw); // only move a save that is readable
+      st.setItem(STORAGE_KEY, raw);
+      if (st.getItem(STORAGE_KEY) === raw) st.removeItem(key);
+      return true;
+    }
+  } catch { /* leave everything where it was */ }
+  return false;
+}
+
 export function load() {
   const base = defaultState();
   try {
-    const raw = storage()?.getItem(STORAGE_KEY);
+    migrateLegacySave();
+    const raw = storage()?.getItem(STORAGE_KEY) || LEGACY_STORAGE_KEYS.map((k) => storage()?.getItem(k)).find(Boolean);
     if (!raw) return base;
     const s = JSON.parse(raw);
     const sessions = Array.isArray(s.sessions) ? s.sessions : [];
     const campaign = { ...base.campaign, ...(s.campaign || {}) };
     campaign.sponsors = (Array.isArray(campaign.sponsors) ? campaign.sponsors : []).map(normalizeSponsor);
-    // A Smile Jar save from before the monster existed: hatch it with the smiles already earned.
+    // A save from before the monster existed: give it the smiles already earned.
     const oldMonster = s.monster ? {} : { smiles: sessions.reduce((a, x) => a + (x.smiles || 0), 0) };
     return {
       ...base,
@@ -84,7 +107,7 @@ export function save(state) {
 
 /** Erase everything, including consent. The app returns to the consent screen. */
 export function wipe() {
-  try { storage()?.removeItem(STORAGE_KEY); } catch { /* nothing stored */ }
+  try { for (const k of [STORAGE_KEY, ...LEGACY_STORAGE_KEYS]) storage()?.removeItem(k); } catch { /* nothing stored */ }
   return defaultState();
 }
 

@@ -41,7 +41,6 @@ It's meant to be easy: the home screen shows one goal, a 3-step "How to play" gu
 
 Other bits:
 
-- **Two games**: *Smile Challenge*, and *Try Not to Smile*, where the monster teases you ("I see that lip twitching...") and every crack still counts.
 - **Sponsor Snacks**: sponsors can add their own joke. The monster serves it as "A snack from Grandma Lee", and if it gets you, Grandma gets the credit and a heart on the monster.
 - **Music**: original background music made right in the app, a dreamy tune for the story, soft piano and bells at home, something bouncy while you play. Music, sounds and volume can be turned on and off separately.
 - **Smile Receipt**: a picture with your monster, your smiles, each sponsor's pledge and the charity, to send to your sponsors. Never your face.
@@ -110,7 +109,7 @@ I tried to keep the money part honest:
 
 ## Consent and Data Handling
 
-- **Camera consent:** after the story, a consent screen explains how the camera is used, and you have to tick a box before you can play. The camera is never on during the story, the consent screen or the home screen. It only turns on when you pick a game and turns off when the game ends. A "Live, not recorded" label shows while it's on. The app only asks for the camera, never the microphone. (Talking is detected from the video.)
+- **Camera consent:** after the story, a consent screen explains how the camera is used, and you have to tick a box before you can play. The camera is never on during the story, the consent screen or the home screen. It only turns on when you press PLAY and turns off when the game ends. A "Live, not recorded" label shows while it's on. The app only asks for the camera, never the microphone. (Talking is detected from the video.)
 - **Only with people who agree:** the consent screen asks you to only count your own smiles, or smiles of people who know and agree. It must not be used to watch anyone secretly.
 - **What's processed:** camera frames go to the SmartSpectra SDK inside the app, get analysed on your computer, and are thrown away. Smile Monster reads the expression scores, blink and talking flags, the breathing trace (if on) and pulse (if on), and only uses them in memory to animate the monster and count smiles.
 - **What's saved on your computer:** whether you've seen the story, your consent date, settings (including music and volume), the charity and goal, sponsor names, rates, caps, their snack jokes and the donations you marked as confirmed, the monster (how many smiles it got and of which joke type), and a total for each game (date, length, number of smiles, amount pledged).

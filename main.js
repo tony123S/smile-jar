@@ -1,4 +1,4 @@
-// main.js: Electron main process for Smile Monster (formerly Smile Jar).
+// main.js: Electron main process for Smile Monster.
 //
 // 1. Points the SmartSpectra binding at the bundled native runtime when packaged.
 // 2. Creates one sandboxed window that loads only the local index.html.
@@ -9,6 +9,7 @@
 
 'use strict';
 
+const fs = require('fs');
 const path = require('path');
 const { app, BrowserWindow, session, shell } = require('electron');
 
@@ -23,8 +24,27 @@ if (app.isPackaged && !process.env.SMARTSPECTRA_CAPI_PATH) {
 
 const { bindSmartSpectraIpc } = require('@smartspectra/node-sdk/main');
 
-// The packaged app was called "Smile Jar". Keep its data folder so existing saves still load.
-if (app.isPackaged) app.setPath('userData', path.join(app.getPath('appData'), 'Smile Jar'));
+// Saved progress lives in a "Smile Monster" folder. Earlier versions of the app used other
+// folder names, so on first launch copy the newest old folder across. The old folder is left
+// untouched, and if the copy fails we keep using it, so progress is never lost.
+const LEGACY_DATA_DIRS = ['Smile Jar', 'smile-jar'];
+function pickUserDataDir() {
+  const appData = app.getPath('appData');
+  const target = path.join(appData, 'Smile Monster');
+  if (fs.existsSync(target)) return target;
+  const old = LEGACY_DATA_DIRS.map((d) => path.join(appData, d)).find((d) => fs.existsSync(d));
+  if (!old) return target;
+  try {
+    fs.cpSync(old, target, { recursive: true, errorOnExist: false });
+    return target;
+  } catch (err) {
+    try { fs.rmSync(target, { recursive: true, force: true }); } catch { /* best effort */ }
+    console.warn('[smile-monster] Could not copy saved data, using the old folder:', err.message);
+    return old;
+  }
+}
+app.setName('Smile Monster');
+app.setPath('userData', pickUserDataDir());
 
 function createWindow() {
   const win = new BrowserWindow({
@@ -34,6 +54,7 @@ function createWindow() {
     minHeight: 640,
     backgroundColor: '#fdf0ff',
     title: 'Smile Monster',
+    icon: path.join(__dirname, 'assets', 'icon.png'),
     webPreferences: {
       preload: require.resolve('@smartspectra/node-sdk/preload'),
       contextIsolation: true,
@@ -52,7 +73,7 @@ function createWindow() {
   win.webContents.on('will-navigate', (event) => event.preventDefault());
 
   win.loadFile(path.join(__dirname, 'index.html'));
-  if (process.env.SMILEJAR_DEVTOOLS === '1') win.webContents.openDevTools({ mode: 'detach' });
+  if (process.env.SMILEMONSTER_DEVTOOLS === '1') win.webContents.openDevTools({ mode: 'detach' });
 }
 
 app.whenReady().then(() => {

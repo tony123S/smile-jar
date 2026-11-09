@@ -42,7 +42,7 @@ test('audio prefs clamp volume and gate buses before the player interacts', () =
   assert.equal(bus('music'), null);
 });
 
-test('an old Smile Jar save still loads, and the story is offered once', async () => {
+test('a save from an earlier version moves to the new key, and the story is offered once', async () => {
   const old = {
     version: 1,
     consent: { version: 1, acceptedAt: '2026-11-01T00:00:00Z' },
@@ -53,6 +53,10 @@ test('an old Smile Jar save still loads, and the story is offered once', async (
   globalThis.localStorage = memoryStorage({ 'smilejar.v1': JSON.stringify(old) });
   const store = await import('../src/store.js');
   const s = store.load();
+  // moved to the Smile Monster key, and the old copy removed only after that worked
+  assert.equal(store.STORAGE_KEY, 'smilemonster.v1');
+  assert.ok(globalThis.localStorage.data['smilemonster.v1']);
+  assert.equal(globalThis.localStorage.data['smilejar.v1'], undefined);
   assert.equal(store.hasConsent(s), true);
   assert.equal(s.campaign.cause, 'Animal shelter');
   assert.equal(s.sessions.length, 1);
@@ -67,4 +71,16 @@ test('an old Smile Jar save still loads, and the story is offered once', async (
   assert.equal(store.load().storySeen, true, 'story is not shown again once seen');
   assert.equal(store.wipe().storySeen, false);
   delete globalThis.localStorage;
+});
+
+test('a broken old save is left alone rather than lost', async () => {
+  const store = await import('../src/store.js');
+  const st = memoryStorage({ 'smilejar.v1': '{not json' });
+  assert.equal(store.migrateLegacySave(st), false);
+  assert.equal(st.data['smilejar.v1'], '{not json');
+  assert.equal(st.data['smilemonster.v1'], undefined);
+  // and a newer save is never overwritten by an old one
+  const both = memoryStorage({ 'smilejar.v1': '{"a":1}', 'smilemonster.v1': '{"b":2}' });
+  assert.equal(store.migrateLegacySave(both), false);
+  assert.equal(both.data['smilemonster.v1'], '{"b":2}');
 });

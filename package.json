@@ -1,5 +1,6 @@
 {
-  "name": "smile-jar",
+  "name": "smile-monster",
+  "productName": "Smile Monster",
   "version": "1.0.0",
   "private": true,
   "description": "Smile Monster: a cute story game where your real smiles, counted live by the SmartSpectra SDK, help a little monster bring its world back to life and add sponsor pledges for charity.",
@@ -24,17 +25,19 @@
     "esbuild": "^0.25.0"
   },
   "build": {
-    "appId": "dev.smilejar.app",
+    "appId": "dev.smilemonster.app",
     "productName": "Smile Monster",
     "files": [
       "main.js",
       "index.html",
       "styles.css",
+      "assets/**",
       "dist/**",
       "node_modules/**",
       "!node_modules/@smartspectra/node-sdk-*/**"
     ],
     "mac": {
+      "icon": "assets/icon.png",
       "hardenedRuntime": true,
       "entitlements": "build/entitlements.mac.plist",
       "entitlementsInherit": "build/entitlements.mac.plist",
@@ -49,6 +52,7 @@
       ]
     },
     "win": {
+      "icon": "assets/icon.png",
       "target": "nsis",
       "extraResources": [
         {
@@ -58,6 +62,7 @@
       ]
     },
     "linux": {
+      "icon": "assets/icon.png",
       "target": "AppImage",
       "extraResources": [
         {

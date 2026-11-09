@@ -19,7 +19,7 @@ const simulate = process.argv.includes('--simulate');
 const apiKey = process.env.SMARTSPECTRA_API_KEY || readDotEnv().SMARTSPECTRA_API_KEY || '';
 
 if (!simulate && !apiKey) {
-  console.warn('\n[smile-jar] No SMARTSPECTRA_API_KEY found. Copy .env.example to .env and add your key,\n' +
+  console.warn('\n[smile-monster] No SMARTSPECTRA_API_KEY found. Copy .env.example to .env and add your key,\n' +
                '            or run `npm run simulate` to try the UI without the SDK.\n');
 }
 
@@ -35,4 +35,4 @@ await build({
     __SIMULATE__: JSON.stringify(simulate),
   },
 });
-console.log(`[smile-jar] built dist/renderer.bundle.js (${simulate ? 'SIMULATED signal' : 'live SmartSpectra SDK'})`);
+console.log(`[smile-monster] built dist/renderer.bundle.js (${simulate ? 'SIMULATED signal' : 'live SmartSpectra SDK'})`);

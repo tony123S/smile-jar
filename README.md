@@ -6,7 +6,7 @@
 
 **Smile Monster** is a cute, story-driven desktop game. Your real smiles, picked up live from the camera by the [Presage SmartSpectra SDK](https://github.com/Presage-Security/SmartSpectra), give a little pastel monster happiness energy. It grows up over five chapters, and its grey, faded world comes back to life with each one. At the same time, friends, family or coworkers pledge an amount per smile to a charity you pick, so your smiles also do some good in the real world.
 
-Built for the DEV Presage SmartSpectra SDK Challenge (`#presagechallenge`). The project started as "Smile Jar"; the repository name and the saved-data key are kept so existing saves still load.
+Built for the DEV Presage SmartSpectra SDK Challenge (`#presagechallenge`).
 
 > Smile Monster is a game. It does not diagnose, treat or assess anyone's health or emotional state. It tracks pledges; it never processes payments.
 
@@ -44,7 +44,7 @@ A **Live signals** panel shows which signals are actually arriving (`live`), sto
 
 **Easy to pick up.** The home screen shows one goal ("Press PLAY and smile 3 times to finish Chapter 1"). Before the first game a 3-step **How to play** guide explains it: read the joke, smile for real, your monster grows. In a game a big banner says what to do, and the HUD shows how many smiles until the monster grows.
 
-**Two games.** *Smile Challenge:* smile at jokes and happy facts. *Try Not to Smile:* keep a straight face while the monster teases you as your HAPPY score creeps up. Every crack still counts.
+**One simple game.** Press PLAY, read the jokes and happy facts, and smile when something makes you happy.
 
 **Music and sound.** Original background music is generated live in the app with Web Audio (no audio files): a dreamy track for the story, soft piano and bells at home, an upbeat track for games, and an uplifting one once the world is fully restored. It loops seamlessly, starts only after you interact with the app, crossfades between screens and pauses when the window is hidden. Smiles never restart it. Sound effects cover smiles, the monster's happy squeak, XP, blooming flowers, level-ups, evolution and chapter completion. **Music** and **Sounds** have separate on/off buttons, plus a volume slider.
 
@@ -103,13 +103,13 @@ The key is read at build time from `.env` (or the `SMARTSPECTRA_API_KEY` environ
 
 1. `npm start`. The opening story plays first. Click **Continue** through the four scenes (or **Skip story**), then **LET'S BEGIN!**. Music starts after your first click.
 2. The camera consent screen comes next. Tick the agreement and press **Meet my monster**. (The diagnostics box is optional and off by default.) The camera has not been touched yet.
-3. The home screen shows the baby monster in its grey world, the XP bar, the five chapters and the Real-world impact card. Try the **Music**, **Sounds** and volume controls at the top.
-4. Press **PLAY** and choose **Smile Challenge**. Before your first game a 3-step **How to play** guide appears (you can open it again from the home screen). Only after that does the SDK open the camera (the OS may ask for permission). The hint on the preview tells you when it's running and how to sit.
+3. The home screen shows the Mysterious Egg in its grey world, the happiness bar, the five chapters and the Real-world impact card. Try the **Music**, **Sounds** and volume controls at the top.
+4. Press **PLAY**. Before your first game a 3-step **How to play** guide appears (you can open it again from the home screen). Only after that does the SDK open the camera (the OS may ask for permission). The hint on the preview tells you when it's running and how to sit.
 5. Look at the **Live signals** chips. They show which SmartSpectra signals your key and setup are really delivering.
-6. Smile at the cards. Each counted smile pops "+10 XP" and the sponsors' pledge. Your first smile brings back the first lights; three smiles finish Chapter 1. Blink, talk, look surprised and breathe, and watch the monster copy you.
+6. Smile at the cards. Each counted smile pops "+10 XP" and the sponsors' pledge. Your first smile makes the egg glow and brings back the first lights. Each smile adds a crack, and the third one hatches the egg into a Baby Monster. Blink, talk, look surprised and breathe, and watch the monster copy you.
 7. Smile at a "Sponsor snack" card to see that sponsor get the credit.
 8. Press **End game**. The camera turns off and the summary shows XP, the monster, sponsor pledges and the charity. Press **Save Smile Receipt**.
-9. Open **Charity & settings**, type an amount in **Donated ($)** for a sponsor and go back: Pledged and Confirmed donated update separately. Try **Export pledge statement (CSV)**, **Replay the story**, and **Try Not to Smile**.
+9. Open **Charity & settings**, type an amount in **Donated ($)** for a sponsor and go back: Pledged and Confirmed donated update separately. Try **Export pledge statement (CSV)** and **Replay the story**.
 10. Open **Privacy & data** and press **Delete all my data** to see the wipe (it starts again from the story).
 
 Breathing needs your chest in view (sit back a little). Pulse needs an API key provisioned for cardio metrics; leave it off if yours isn't.
@@ -118,7 +118,7 @@ Breathing needs your chest in view (sit back a little). Pulse needs an API key p
 
 | Command | What it does |
 | --- | --- |
-| `npm test` | Unit tests: smile detector, pledges and confirmed donations, monster levels, XP and traits, world restoration, music loops, signal tracking, humour model, loading old Smile Jar saves |
+| `npm test` | Unit tests: smile detector, pledges and confirmed donations, monster levels, XP and traits, world restoration, music loops, signal tracking, humour model, moving saves from earlier versions safely |
 | `npm run simulate` | Launches the UI with a **fake** signal for UI work (Space = smile, G = big grin, W = surprise, B = blink, T = talk, breathing is a sine wave). A yellow banner says so on every screen. The real build never uses it |
 | `npm run dist:mac` / `dist:win` / `dist:linux` | Packaged installers via electron-builder |
 
@@ -135,11 +135,11 @@ Breathing needs your chest in view (sit back a little). Pulse needs an API key p
 
 ## Consent and Data Handling
 
-**Camera consent.** After the opening story (which never uses the camera), the app shows a consent screen that explains the points below and requires the user to tick an agreement before anything else is available. The camera is never opened during the story, on the consent screen, on the home screen or in the game picker. It is opened by the SDK only when the user picks a game, and released when the game ends, the timer runs out, the user deletes their data, or the window closes. A "Live, not recorded" badge is shown while it's on, alongside the OS camera indicator. The Electron main process grants only video (never the microphone) and only to the app's own bundled page. Talking detection comes from the video, not from audio. The consent text asks users to count only their own smiles or those of people who knowingly agreed to take part; the app must not be used for covert monitoring.
+**Camera consent.** After the opening story (which never uses the camera), the app shows a consent screen that explains the points below and requires the user to tick an agreement before anything else is available. The camera is never opened during the story, on the consent screen or on the home screen. It is opened by the SDK only when the user presses PLAY (after the How to play guide the first time), and released when the game ends, the timer runs out, the user deletes their data, or the window closes. A "Live, not recorded" badge is shown while it's on, alongside the OS camera indicator. The Electron main process grants only video (never the microphone) and only to the app's own bundled page. Talking detection comes from the video, not from audio. The consent text asks users to count only their own smiles or those of people who knowingly agreed to take part; the app must not be used for covert monitoring.
 
 **What is processed.** Camera frames go from the renderer to the SmartSpectra SDK running inside the app's main process, are analysed on the device, and are discarded. Smile Monster reads expression scores, blink and talking flags, the breathing trace (if "Monster breathes with you" is on) and pulse (if turned on). It uses them in memory to animate the monster, update the meter and count smiles, then drops them.
 
-**What is stored.** One record in the app's local storage on this device (`smilejar.v1`, the name kept from Smile Jar): whether the opening story has been seen; the consent version and time; settings (game length, breathing mirror, pulse, music, sound effects, volume, diagnostics); the cause and goal; sponsor names, rates, caps, colours, snack jokes, snack-smile counts and the confirmed donation amounts the user typed; the monster (qualifying smiles, from which XP and level are worked out; smiles per joke category; surprise-moment count; straight-face game count; snack smiles per sponsor); names of retired monsters; and per-game totals (end time, duration, mode, number of smiles, pledged amount).
+**What is stored.** One record in the app's local storage on this device (`smilemonster.v1`; a save from an earlier version of the app is moved to this name the first time it opens, and the old copy is removed only after the move worked): whether the opening story has been seen; the consent version and time; settings (game length, breathing mirror, pulse, music, sound effects, volume, diagnostics); the cause and goal; sponsor names, rates, caps, colours, snack jokes, snack-smile counts and the confirmed donation amounts the user typed; the monster (qualifying smiles, from which XP and level are worked out; smiles per joke category; surprise-moment count; snack smiles per sponsor); names of retired monsters; and per-game totals (end time, duration, number of smiles, pledged amount).
 
 **What is never stored or sent by Smile Monster.** Video, images, screenshots, face landmarks, expression scores, blink, talking or breathing data, pulse values, or any other biometric data. The blink count on the summary is a number for that screen only. The in-game humour model is discarded when the game ends. A video clip the user plays is opened from their disk through a temporary local URL and never copied or uploaded.
 
@@ -170,7 +170,7 @@ src/pledges.js          Sponsor caps, session pledge, confirmed donations, CSV s
 src/store.js            The single local record, migration of older saves, wipe
 src/joy-reel.js         Built-in cards, grouped by kind
 src/humour.js           Learns which kind of card makes you smile (in memory only)
-src/jar-voice.js        What the monster says, and when
+src/monster-voice.js    What the monster says, and when
 src/sounds.js           Sound effects (no files)
 src/receipt.js          Draws the Smile Receipt PNG
 src/simulator.js        UI-only fake signal for `npm run simulate`

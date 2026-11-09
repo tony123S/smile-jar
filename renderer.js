@@ -1,6 +1,6 @@
 // renderer.js: Smile Monster. Bundled to dist/renderer.bundle.js by build.mjs.
 //
-// Flow: opening story (once) -> camera consent -> home (the monster's world) -> pick a game ->
+// Flow: opening story (once) -> camera consent -> home (the monster's world) -> PLAY ->
 // camera starts. The camera is only ever started inside startSession().
 //
 // SmartSpectra integration lives in buildSdk()/wireSdk(): we request the SDK's face bundle
@@ -25,7 +25,7 @@ import {
 import * as store from './src/store.js';
 import { JOY_REEL } from './src/joy-reel.js';
 import { HumourModel, personaFor } from './src/humour.js';
-import { JarVoice } from './src/jar-voice.js';
+import { MonsterVoice } from './src/monster-voice.js';
 import { sfx } from './src/sounds.js';
 import { unlockAudio, setAudioPrefs } from './src/audio.js';
 import { music } from './src/music.js';
@@ -417,7 +417,7 @@ function renderCampaign() {
     const li = document.createElement('li');
     const d = new Date(s.endedAt);
     li.innerHTML = `<span>${d.toLocaleDateString()} ${d.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</span>
-      <span>${s.smiles} ${s.mode === 'poker' ? 'cracks' : 'smiles'}</span><span>${(s.durationMs / 60000).toFixed(1)} min</span><strong>${formatCents(s.pledgedCents)}</strong>`;
+      <span>${plural(s.smiles, 'smile', 'smiles')}</span><span>${(s.durationMs / 60000).toFixed(1)} min</span><strong>${formatCents(s.pledgedCents)}</strong>`;
     hist.appendChild(li);
   }
   for (const p of state.pastMonsters.slice().reverse().slice(0, 5)) {
@@ -465,34 +465,29 @@ $('btn-reset-monster').addEventListener('click', () => {
   toast('A new little monster was born.');
 });
 
-// ---------------------------------------------------------------- mode picker
-const picker = $('mode-picker');
-$('btn-play').addEventListener('click', () => { sfx.click(); picker.showModal(); });
-$('btn-mode-cancel').addEventListener('click', () => picker.close());
-// A 3-step "How to play" guide before the first game, and any time from the home screen.
+// ---------------------------------------------------------------- play
+// PLAY starts the game. The first time, a 3-step "How to play" guide comes first; it can be
+// reopened any time from the home screen.
 const howto = $('howto');
-let pendingMode = null;
-function openHowTo(mode = null) {
-  pendingMode = mode;
-  $('howto-poker').hidden = mode === 'smile';
-  $('btn-howto-go').textContent = mode ? 'Got it, let\u2019s play!' : 'Got it!';
+let playAfterHowTo = false;
+function openHowTo(thenPlay = false) {
+  playAfterHowTo = thenPlay;
+  $('btn-howto-go').textContent = thenPlay ? 'Got it, let\u2019s play!' : 'Got it!';
   howto.showModal();
 }
-$('btn-howto').addEventListener('click', () => { sfx.click(); openHowTo(null); });
+$('btn-howto').addEventListener('click', () => { sfx.click(); openHowTo(false); });
 $('btn-howto-go').addEventListener('click', () => {
   howto.close();
   state.settings.howToSeen = true;
   persist();
-  const mode = pendingMode;
-  pendingMode = null;
-  if (mode) startSession(mode);
+  const play = playAfterHowTo;
+  playAfterHowTo = false;
+  if (play) startSession();
 });
-function pickMode(mode) {
-  picker.close();
-  if (!state.settings.howToSeen) openHowTo(mode); else startSession(mode);
-}
-$('btn-new-session').addEventListener('click', () => pickMode('smile'));
-$('btn-poker-session').addEventListener('click', () => pickMode('poker'));
+$('btn-play').addEventListener('click', () => {
+  sfx.click();
+  if (!state.settings.howToSeen) openHowTo(true); else startSession();
+});
 
 // ---------------------------------------------------------------- session
 const STATUS = Object.fromEntries(Object.entries(ProcessingStatus).map(([k, v]) => [v, k]));
@@ -553,7 +548,7 @@ function nextCard() {
   const fav = session.humour.favourite();
   const learned = session.humour.lastPickWasLearned && fav === card.kind;
   $('reel-why').textContent = learned
-    ? (session.mode === 'poker' ? `Picked to crack you: ${card.kind.toLowerCase()}s got you before` : `Picked for you: you smile at ${card.kind.toLowerCase()}s`)
+    ? `Picked for you: you smile at ${card.kind.toLowerCase()}s`
     : '';
   if (card.sponsorId) {
     const line = session.voice.onSnack(now);
@@ -568,7 +563,7 @@ function nextCard() {
 function renderTaste() {
   const rows = session.humour.summary().filter((r) => r.smiles > 0);
   $('s-taste').textContent = rows.length
-    ? `${session.mode === 'poker' ? 'Your weak spots' : 'What makes you smile'}: ${rows.map((r) => `${r.kind} ${r.smiles}`).join(' · ')}`
+    ? `What makes you smile: ${rows.map((r) => `${r.kind} ${r.smiles}`).join(' · ')}`
     : '';
 }
 
@@ -685,11 +680,6 @@ function renderSession() {
   const cents = sessionPledge(state.campaign.sponsors, session.before, session.smiles);
   $('s-smiles').textContent = session.smiles;
   $('s-money').textContent = formatCents(cents);
-  if (session.mode === 'poker') {
-    const streak = Date.now() - session.straightSince;
-    session.bestStreakMs = Math.max(session.bestStreakMs, streak);
-    $('s-streak').textContent = `Straight face: ${fmtSecs(streak)} · best ${fmtSecs(session.bestStreakMs)}`;
-  }
   renderSignals();
   const left = Math.max(0, session.deadline - Date.now());
   $('s-timer').textContent = fmtSecs(left + 999);
@@ -780,10 +770,6 @@ function onSmile(peakHappy = 0) {
   s.lastSmileAt = now;
   const golden = peakHappy >= GOLDEN_AT;
   if (golden) s.golden += 1;
-  if (s.mode === 'poker') {
-    s.bestStreakMs = Math.max(s.bestStreakMs, now - s.straightSince);
-    s.straightSince = now;
-  }
 
   // Feed the monster whatever was on screen when the smile started.
   const card = s.humour.creditSmile(now);
@@ -804,22 +790,20 @@ function onSmile(peakHappy = 0) {
   if (before.key === 'egg') bounceClass('egg-wiggle', 650);
   else bounceClass('happy', 520);
 
-  if (s.mode === 'poker') { sfx.crack(); s.voice.resetStreak(); }
-  else if (golden) sfx.golden();
+  if (golden) sfx.golden();
   else { sfx.smile(); if (s.combo > 1) sfx.combo(s.combo); }
   if (before.key === 'egg') sfx.eggShake(); else sfx.happy();
   sfx.xp();
   if (snackFrom) sfx.snack();
-  speak(s.voice.onSmile({ mode: s.mode, golden, combo: s.combo }, now).text);
+  speak(s.voice.onSmile({ golden, combo: s.combo }, now).text);
 
   const after = stageFor(liveMonster().smiles);
   const tierAfter = worldTier(liveMonster().smiles);
   if (tierAfter !== tierBefore && tierAfter >= 1) setTimeout(() => sfx.bloom(), 450); // the world comes back a little
   if (after.index > before.index) celebrateEvolution(before, after);
-  else if (tierBefore === 0) popBadge('The egg is glowing! The first light is back!', 'evolve');
+  else if (tierBefore === 0) popBadge('The egg is glowing!', 'evolve');
   else if (after.key === 'egg') popBadge('Crack! Something is moving inside...', 'evolve');
   else if (snackFrom) popBadge(`${snackFrom.name}’s snack got you!`, 'snack');
-  else if (s.mode === 'poker') popBadge(s.combo > 1 ? `Cracked again! x${s.combo}` : 'You cracked!', 'crack');
   else if (golden) popBadge(s.combo > 1 ? `Golden grin! Combo x${s.combo}` : 'Golden grin!', 'gold');
   else if (s.combo > 1) popBadge(`Combo x${s.combo}!`, 'combo');
   renderSession();
@@ -850,12 +834,13 @@ function handleMetrics(m) {
       if (face === 'wow' && now - s.lastSurpriseAt > SURPRISE_COOLDOWN_MS) {
         s.lastSurpriseAt = now;
         s.surprises += 1; // big sparkly eyes grow with surprise moments
-        if (s.mode !== 'poker') { popBadge('Whoa!', 'wow'); sfx.wow(); }
+        popBadge('Whoa!', 'wow');
+        sfx.wow();
       }
       s.face = face;
       scheduleMonster();
     }
-    const line = s.voice.onTick({ mode: s.mode, happy: detector.level, face, streakMs: now - s.straightSince }, now);
+    const line = s.voice.onTick({ face }, now);
     if (line) speak(line.text);
   }
 
@@ -915,12 +900,11 @@ function wireSdk(s) {
   s.on('processingStatus', (status) => {
     const name = STATUS[status] || String(status);
     if (status === ProcessingStatus.kStarting) setHint('Starting the SDK...');
-    if (status === ProcessingStatus.kRunning) setHint(session?.mode === 'poker' ? 'Running. Keep a straight face...' : 'Running. Smile when something makes you happy!', 'ok');
+    if (status === ProcessingStatus.kRunning) setHint('Running. Smile when something makes you happy!', 'ok');
     if (status === ProcessingStatus.kError) setHint(`SDK error (${name}).`, 'err');
   });
   s.on('validationStatus', (code, _ts, hint) => {
     let text = HINTS[code] || hint || 'Adjusting...';
-    if (code === ValidationCode.kOk && session?.mode === 'poker') text = 'Looking good. Don’t you dare smile.';
     setHint(text, code === ValidationCode.kOk ? 'ok' : code === ValidationCode.kCameraTuning ? 'warn' : 'err');
   });
   s.on('metrics', (buf) => {
@@ -944,7 +928,7 @@ function wireSdk(s) {
   });
 }
 
-async function startSession(mode = 'smile') {
+async function startSession() {
   if (!store.hasConsent(state)) { renderConsent(); show('consent'); return; }
   showError('');
   detector = new SmileDetector();
@@ -956,7 +940,7 @@ async function startSession(mode = 'smile') {
     before: store.totalSmiles(state),
     stageAtStart: stageFor(state.monster.smiles),
     humour: new HumourModel(reelCards()),
-    voice: new JarVoice(),
+    voice: new MonsterVoice(),
     signals: new SignalMonitor(),
     blink: new BlinkTracker(),
     breath: new BreathNormalizer(),
@@ -964,29 +948,17 @@ async function startSession(mode = 'smile') {
     talking: false,
     talkTimer: null,
     toldLearned: false,
-    mode,
     face: 'flat',
     combo: 0,
     bestCombo: 0,
     lastSmileAt: -Infinity,
     golden: 0,
-    straightSince: now,
-    bestStreakMs: 0,
     diet: {},
     snack: {},
     surprises: 0,
     lastSurpriseAt: -Infinity,
     evolutions: [],
   };
-  const poker = mode === 'poker';
-  $('s-mode').textContent = poker ? 'Try Not to Smile' : 'Smile Challenge';
-  $('s-mode-help').textContent = poker
-    ? 'Keep a straight face. Every crack still gives your monster energy, and your sponsors pledge.'
-    : 'Smile when something makes you happy. Every smile gives your monster energy.';
-  $('s-unit').textContent = poker ? 'cracks' : 'smiles';
-  $('s-do').textContent = poker ? '\u{1F610} Don\u2019t smile! Keep a straight face.' : '\u{1F60A} Smile if this makes you happy!';
-  $('s-do').classList.toggle('poker', poker);
-  $('s-streak').hidden = !poker;
   $('s-badge').hidden = true;
   $('s-speech').hidden = true;
   $('s-blinks').textContent = '';
@@ -1004,7 +976,7 @@ async function startSession(mode = 'smile') {
   show('session');
   renderMonsterNow();
   renderSession();
-  speak(session.voice.start(mode, now).text);
+  speak(session.voice.start(now).text);
   session.timer = setInterval(renderSession, 500);
 
   try {
@@ -1032,8 +1004,6 @@ async function stopSdk() {
   $('cam-live').hidden = true;
 }
 
-const STONE_FACE_MS = 15000; // a Try Not to Smile game with a 15 s straight face adds steady freckles
-
 let ending = false;
 async function endSession() {
   if (!session || ending) return;
@@ -1043,7 +1013,6 @@ async function endSession() {
   clearInterval(session.talkTimer);
   const s = session;
   const now = Date.now();
-  if (s.mode === 'poker') s.bestStreakMs = Math.max(s.bestStreakMs, now - s.straightSince);
   const signalStatus = s.signals.status(now);
   session = null;
   await stopSdk();
@@ -1053,8 +1022,7 @@ async function endSession() {
   $('clip-file').value = '';
 
   // Commit what the session fed the monster, remembering the deltas so "Don't save" can undo them.
-  const stoneFace = s.mode === 'poker' && s.bestStreakMs >= STONE_FACE_MS ? 1 : 0;
-  const delta = { smiles: s.smiles, diet: { ...s.diet }, snack: { ...s.snack }, surprises: s.surprises, pokerSessions: stoneFace };
+  const delta = { smiles: s.smiles, diet: { ...s.diet }, snack: { ...s.snack }, surprises: s.surprises };
   applyMonsterDelta(delta, 1);
 
   const sponsors = state.campaign.sponsors;
@@ -1063,7 +1031,6 @@ async function endSession() {
     endedAt: new Date().toISOString(),
     durationMs: now - s.startedAt,
     smiles: s.smiles,
-    mode: s.mode,
     pledgedCents: sessionPledge(sponsors, s.before, s.smiles),
   };
   state.sessions.push(record);
@@ -1083,7 +1050,7 @@ async function endSession() {
     : '';
   $('sum-xp').textContent = `+${s.smiles * XP_PER_SMILE} XP · ${xpText(look.xp)} · ${nextLine(look.stage)}`;
 
-  const unit = s.mode === 'poker' ? (record.smiles === 1 ? 'crack' : 'cracks') : (record.smiles === 1 ? 'qualifying smile' : 'qualifying smiles');
+  const unit = record.smiles === 1 ? 'qualifying smile' : 'qualifying smiles';
   $('sum-smiles').textContent = record.smiles;
   $('sum-unit').textContent = unit;
   $('sum-money').textContent = formatCents(record.pledgedCents);
@@ -1099,21 +1066,20 @@ async function endSession() {
     <strong>${esc(l.name)}</strong> pledged ${formatCents(l.cents)}${l.capped ? ' (cap reached)' : ''}${l.snack ? ` · their snack earned ${plural(l.snack, 'smile', 'smiles')}` : ''}</li>`).join('');
 
   const extras = [];
-  if (s.mode === 'poker') extras.push(`Longest straight face: ${fmtSecs(s.bestStreakMs)}`);
   if (s.bestCombo > 1) extras.push(`Best combo: x${s.bestCombo}`);
   if (s.golden > 0) extras.push(`Golden grins: ${s.golden}`);
   if (s.surprises > 0) extras.push(`Surprise moments: ${s.surprises}`);
   if (signalStatus.blinking.seen) extras.push(`Blinks mirrored: ${s.blink.blinks}`);
   const fav = s.humour.favourite();
   const persona = fav
-    ? (s.mode === 'poker' ? `Your weak spot: ${fav.toLowerCase()}s` : `You're ${personaFor(fav)}`)
-    : (s.mode === 'poker' ? 'Unbreakable. Nothing cracked you.' : '');
+    ? `You're ${personaFor(fav)}`
+    : '';
   $('sum-extras').textContent = extras.join(' · ');
   $('sum-persona').textContent = persona;
 
   const totalSmiles = store.totalSmiles(state);
   lastReceipt = {
-    title: s.mode === 'poker' ? 'Try Not to Smile' : 'Smile Challenge',
+    title: 'Smile Monster',
     monsterSvg: drawMonster(null, m, { face: 'grin' }, { standalone: true, backdrop: true }),
     monsterName: look.name,
     stageLabel: `Level ${look.stage.level} · ${look.stage.chapter}`,
@@ -1145,7 +1111,6 @@ function applyMonsterDelta(d, sign) {
     if (sp) sp.snackSmiles = Math.max(0, (sp.snackSmiles || 0) + sign * n);
   }
   m.surprises = Math.max(0, m.surprises + sign * d.surprises);
-  m.pokerSessions = Math.max(0, m.pokerSessions + sign * d.pokerSessions);
 }
 
 $('btn-receipt').addEventListener('click', async () => {

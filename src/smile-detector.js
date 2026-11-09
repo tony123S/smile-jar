@@ -30,7 +30,7 @@ export function happyScore(expression) {
 }
 
 /**
- * Which face the jar mascot should pull, from the latest expression sample.
+ * Which face the monster should pull, from the latest expression sample.
  * Purely cosmetic: grin when HAPPY is high, jaw-drop when SURPRISE is high.
  */
 export function mascotFace(expression, { happyAt = 60, surpriseAt = 50 } = {}) {

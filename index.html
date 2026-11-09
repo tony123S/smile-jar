@@ -6,6 +6,7 @@
   <meta http-equiv="Content-Security-Policy"
         content="default-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob:; worker-src 'self' blob:; media-src 'self' blob:; connect-src 'self' blob:; frame-src 'none'; object-src 'none';">
   <title>Smile Monster</title>
+  <link rel="icon" type="image/png" href="assets/icon.png">
   <link rel="stylesheet" href="./styles.css">
 </head>
 <body>
@@ -15,7 +16,7 @@
 
   <header class="topbar" id="topbar">
     <div class="brand">
-      <svg class="brand-mark" viewBox="0 0 32 32" aria-hidden="true"><ellipse cx="16" cy="18" rx="12" ry="10.5" fill="#d9ccff" stroke="#4a3b5c" stroke-width="1.8"/><ellipse cx="12" cy="17" rx="1.8" ry="2.2" fill="#4a3b5c"/><ellipse cx="20" cy="17" rx="1.8" ry="2.2" fill="#4a3b5c"/><path d="M14 21.5q2 2 4 0" fill="none" stroke="#4a3b5c" stroke-width="1.6" stroke-linecap="round"/><ellipse cx="9" cy="20.5" rx="2" ry="1.2" fill="#ff9fb8"/><ellipse cx="23" cy="20.5" rx="2" ry="1.2" fill="#ff9fb8"/></svg>
+      <img class="brand-mark" src="assets/icon.png" alt="" width="32" height="32">
       <span>Smile Monster</span>
     </div>
     <div class="top-actions">
@@ -48,7 +49,7 @@
       <h1>Before you meet your monster</h1>
       <p class="lede">Your monster grows when you smile, and your sponsors pledge money to a charity for every smile. To see you, it needs your camera, so here is exactly what happens.</p>
       <ul class="facts">
-        <li><strong>The camera is only on during a game.</strong> It starts when you pick a game and turns off when the game ends. It is never on during the story or on the home screen. Your system camera light will show it.</li>
+        <li><strong>The camera is only on during a game.</strong> It starts when you press PLAY and turns off when the game ends. It is never on during the story or on the home screen. Your system camera light will show it.</li>
         <li><strong>Nothing is recorded.</strong> Video frames are analysed live by the Presage SmartSpectra SDK on this computer and then discarded. The monster copies your expressions, blinks, talking and (if turned on) breathing as they happen, but none of those signals are saved or sent anywhere by Smile Monster.</li>
         <li><strong>Only totals are saved, on this device.</strong> Smile counts, which joke categories made you smile, sponsor names, their jokes and pledges. You can export or delete this any time.</li>
         <li><strong>The SDK contacts Presage to check the API key</strong> and, only if you allow it below, to send an anonymous diagnostics summary (no video, no measurements, no identifiers).</li>
@@ -105,35 +106,15 @@
     </aside>
   </main>
 
-  <!-- Mode picker ---------------------------------------------------------- -->
-  <dialog id="mode-picker" class="mode-picker">
-    <h2>Choose a game</h2>
-    <div class="modes">
-      <button type="button" class="mode-card" id="btn-new-session">
-        <span class="mode-icon" aria-hidden="true">&#9786;</span>
-        <strong>Smile Challenge</strong>
-        <span>Read jokes and happy facts. Every real smile gives your monster happiness energy.</span>
-      </button>
-      <button type="button" class="mode-card alt" id="btn-poker-session">
-        <span class="mode-icon" aria-hidden="true">&#128528;</span>
-        <strong>Try Not to Smile</strong>
-        <span>Keep a straight face while the monster teases you. Every crack still counts.</span>
-      </button>
-    </div>
-    <p class="muted small">The camera turns on when you pick a game, and off when it ends.</p>
-    <div class="actions"><button type="button" class="link" id="btn-mode-cancel">Not now</button></div>
-  </dialog>
-
   <!-- How to play ------------------------------------------------------- -->
   <dialog id="howto" class="howto">
     <h2>How to play</h2>
     <ol class="howto-steps">
       <li><span class="howto-icon" aria-hidden="true">&#128214;</span><strong>1. Read the joke</strong><span>A joke or fun fact appears on the left card.</span></li>
       <li><span class="howto-icon" aria-hidden="true">&#128522;</span><strong>2. Smile for real</strong><span>The camera sees your smile. Hold it for a moment until the smile bar passes the line.</span></li>
-      <li><span class="howto-icon" aria-hidden="true">&#127793;</span><strong>3. Your monster grows</strong><span>Each smile = +10 XP. Fill the XP bar and your monster grows up and its world gets its colours back.</span></li>
+      <li><span class="howto-icon" aria-hidden="true">&#127793;</span><strong>3. Your monster grows</strong><span>Each smile fills the egg with happiness until it hatches. Then every smile is +10 XP, your monster grows up and its world gets its colours back.</span></li>
     </ol>
     <p class="howto-bonus">&#10084; <strong>Bonus:</strong> your sponsors promise money to charity for every smile. You never pay anything.</p>
-    <p class="muted small" id="howto-poker" hidden>In <strong>Try Not to Smile</strong> it's the opposite: keep a straight face! If you crack, it still counts.</p>
     <div class="actions center"><button type="button" class="play-btn small" id="btn-howto-go">Got it!</button></div>
   </dialog>
 
@@ -232,7 +213,7 @@
 
     <section class="stage">
       <div class="reel card" id="reel">
-        <div class="mode-head"><strong id="s-mode">Smile Challenge</strong> <span class="muted small" id="s-mode-help"></span></div>
+        <div class="mode-head"><strong id="s-mode">Make your monster smile</strong> <span class="muted small" id="s-mode-help">Smile when something makes you happy. Every smile gives your monster energy.</span></div>
         <div class="do-this" id="s-do">&#128522; Smile if this makes you happy!</div>
         <div class="reel-kind" id="reel-kind">Joke</div>
         <div class="reel-from" id="reel-from" hidden></div>
@@ -246,7 +227,6 @@
             <span>Play my own clip</span>
           </label>
         </div>
-        <div class="small streak" id="s-streak" hidden></div>
         <div class="taste small" id="s-taste"></div>
       </div>
 
@@ -310,7 +290,7 @@
     <h2>Privacy &amp; data</h2>
     <p><strong>Camera:</strong> used only while a game runs, never during the story or on the home screen. Frames go from the camera to the SmartSpectra SDK in this app and are discarded after analysis. Nothing is recorded or uploaded by Smile Monster.</p>
     <p><strong>Signals used live, never saved:</strong> expressions (HAPPY, SURPRISE), blinking, talking, breathing trace (if "breathes with you" is on) and pulse (if turned on).</p>
-    <p><strong>Saved on this device:</strong> whether you have seen the story, consent date, settings, cause and goal, sponsor names, rates, caps, snack jokes and confirmed donations you entered, the monster's diet (smile counts per joke category, surprise moments, Try Not to Smile sessions), and per-game totals.</p>
+    <p><strong>Saved on this device:</strong> whether you have seen the story, consent date, settings, cause and goal, sponsor names, rates, caps, snack jokes and confirmed donations you entered, the monster's diet (smile counts per joke category, surprise moments), and per-game totals.</p>
     <p><strong>Network:</strong> the SDK contacts Presage to validate the API key. Anonymous SDK diagnostics are <span id="pv-telemetry">off</span>. Smile Monster itself has no server, analytics or AI service, and its music and art are made inside the app.</p>
     <p><strong>Retention:</strong> kept until you delete it. Deleting removes all of it and starts over from the story.</p>
     <label class="check">

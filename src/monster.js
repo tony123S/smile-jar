@@ -29,7 +29,6 @@ export function emptyMonster() {
     diet: Object.fromEntries(DIET_KINDS.map((k) => [k, 0])),
     snackBy: {}, // sponsor id -> smiles their snack joke earned for this monster
     surprises: 0,
-    pokerSessions: 0,
   };
 }
 
@@ -99,6 +98,7 @@ export function traitsFor(monster, sponsors = []) {
     glow: tier(d['Memory'] || 0),
     stars: tier(d['Picture this'] || 0),
     bigEyes: tier(monster?.surprises || 0),
+    // Soft speckles from an earlier game mode. No longer earned, but monsters that have them keep them.
     stone: tier(monster?.pokerSessions || 0),
     patches: sponsors.filter((s) => (s.snackSmiles || 0) > 0).slice(0, 5).map((s) => s.color || '#c792ea'),
   };
