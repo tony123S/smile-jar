@@ -239,10 +239,33 @@
       <div class="xp-bar hud-xp"><div class="xp-fill" id="s-stage-fill"></div><span class="xp-text" id="s-xp">0 XP</span></div>
       <div class="hud-stat"><span class="hud-num" id="s-smiles">0</span><span class="small" id="s-unit">smiles</span></div>
       <div class="hud-stat"><span class="hud-num small-num" id="s-money">$0.00</span><span class="small">pledged</span></div>
-      <div class="hud-stat"><span class="hud-num small-num" id="s-timer">2:00</span><span class="small">left</span></div>
+      <div class="hud-stat"><span class="hud-num small-num" id="s-timer">2:00</span><span class="small" id="s-timer-label">left</span></div>
     </div>
 
     <section class="stage">
+      <!-- Expression Adventure: Momo's level. Your face is the controller. -->
+      <div class="adv card" id="adv" hidden>
+        <div class="adv-scene" id="adv-scene"></div>
+        <div class="adv-thing" id="adv-thing" hidden></div>
+        <div class="adv-boss" id="adv-boss" hidden></div>
+        <div class="adv-momo" id="adv-momo"><div class="adv-momo-pose" id="adv-momo-pose"><div class="monster-wrap" id="adv-momo-svg"></div></div></div>
+        <div class="adv-speech" id="adv-speech" role="status" hidden></div>
+        <div class="adv-prompt" id="adv-prompt" hidden>
+          <div class="adv-prompt-text" id="adv-prompt-text">Smile to jump!</div>
+          <div class="adv-window"><div class="adv-window-fill" id="adv-window-fill"></div></div>
+        </div>
+        <div class="adv-sneak" id="adv-sneak" hidden><span>Straight face</span><div class="adv-window"><div class="adv-window-fill calm" id="adv-sneak-fill"></div></div></div>
+        <div class="adv-backup" id="adv-backup" hidden>Blinks aren&rsquo;t coming through, so look surprised to dodge.</div>
+        <div class="adv-done" id="adv-done" hidden>
+          <div class="adv-done-card">
+            <div class="adv-stars" id="adv-stars">&#9733;&#9733;&#9733;</div>
+            <h2 id="adv-done-title">Level complete!</h2>
+            <p id="adv-done-line"></p>
+            <p class="adv-done-score"><strong id="adv-done-score">0</strong> points &middot; <strong id="adv-done-smiles">0</strong> charity smiles</p>
+            <button type="button" class="play-btn" id="btn-adv-next">See how you did</button>
+          </div>
+        </div>
+      </div>
       <div class="reel card" id="reel">
         <div class="mode-head"><strong id="s-mode">Make your monster smile</strong> <span class="muted small" id="s-mode-help">Smile when something makes you happy. Every smile gives your monster energy.</span></div>
         <div class="do-this" id="s-do">&#128522; Smile if this makes you happy!</div>

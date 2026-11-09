@@ -254,7 +254,7 @@ function eggSvg({ traits, live, egg, uid, expr, sy }) {
  * @param {boolean} [o.backdrop]   draw a soft pastel circle behind it (receipt)
  * @param {object} [o.egg]      eggState() for the egg stage ({ cracks, hatching })
  */
-export function monsterSvg({ stage, traits, live = {}, standalone = false, backdrop = false, uid = 'm', egg = null }) {
+export function monsterSvg({ stage, traits, live = {}, standalone = false, backdrop = false, uid = 'm', egg = null, scarf = null }) {
   const t = traits;
   const key = SIZE[stage] ? stage : 'egg';
   const s = SIZE[key];
@@ -353,6 +353,12 @@ export function monsterSvg({ stage, traits, live = {}, standalone = false, backd
   b += `<ellipse cx="${f1(cx + rx * 0.52)}" cy="${f1(ey + ery + 5 * s)}" rx="${f1(11 * s)}" ry="${f1(6.5 * s)}" fill="${BLUSH}" opacity="${blushOn ? 0.75 : 0.45}"/>`;
   b += eyes({ cx, cy: ey, gap: rx * 0.34, rx: erx, ry: ery, expr, closed: !!live.eyesClosed, wink: !!live.wink, look: Number(live.look) || 0 });
   b += mouth({ cx, cy: ey + ery + 9 * s, expr, s });
+  // Momo's adventure scarf: a band under the face with a tail that flutters behind
+  if (scarf) {
+    const sy0 = ey + ery + 26 * s, w = rx * 0.86;
+    b += `<path d="M${f1(cx - w)} ${f1(sy0 - 4 * s)} q${f1(w)} ${f1(16 * s)} ${f1(w * 2)} 0 l0 ${f1(10 * s)} q${f1(-w)} ${f1(16 * s)} ${f1(-w * 2)} 0 z" fill="${scarf}" stroke="${INK}" stroke-width="2.4" stroke-linejoin="round"/>`;
+    b += `<path class="scarf-tail" d="M${f1(cx - w * 0.82)} ${f1(sy0 + 4 * s)} q${f1(-22 * s)} ${f1(4 * s)} ${f1(-34 * s)} ${f1(-8 * s)} l${f1(4 * s)} ${f1(12 * s)} q${f1(-6 * s)} ${f1(2 * s)} ${f1(-10 * s)} ${f1(10 * s)} q${f1(18 * s)} ${f1(4 * s)} ${f1(40 * s)} ${f1(-4 * s)} z" fill="${scarf}" stroke="${INK}" stroke-width="2.2" stroke-linejoin="round"/>`;
+  }
 
   // growing-up accessories, same character every level
   if (key === 'blob') {
