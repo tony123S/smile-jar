@@ -27,6 +27,8 @@ export const LINES = Object.freeze({
     sneak: ['Shh. Straight face. Guards hate fun.', 'Super serious face... we’re ninjas now.'],
   },
   help: 'No rush! I’ll wait right here. Take your time.',
+  away: 'Hey, where did you go? I’ll wait right here.',
+  back: 'There you are! Okay, where were we...',
   complete: [
     'We did it! Listen... the laughter is coming back!',
     'Victory dance! Wiggle wiggle wiggle!',

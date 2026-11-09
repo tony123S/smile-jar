@@ -296,3 +296,31 @@ test('the adventure has its own level, boss and victory music', () => {
     assert.deepEqual(notesAt(name, len), notesAt(name, 0), 'loops seamlessly');
   }
 });
+
+test('stepping away pauses the level, so the window never runs out and no star is lost', () => {
+  const g = new AdventureLevel(LEVELS[0], { now: 0 });
+  let t = 0;
+  while (g.phase !== 'challenge') { t += 50; g.tick(t); }
+  const left = g.phaseEnds - t;
+  g.setPaused(true, t);
+  const ev = g.tick(t + 30000, { actions: ['jump'] }); // a face from while away doesn't count either
+  assert.equal(g.misses, 0);
+  assert.equal(g.phase, 'challenge');
+  assert.ok(!ev.some((e) => e.type === 'success'));
+  g.setPaused(false, t + 30000);
+  assert.equal(g.phaseEnds - (t + 30000), left); // the same time left as before the break
+  g.tick(t + 30050, { actions: ['jump'] });
+  assert.equal(g.phase, 'success');
+  assert.equal(g.misses, 0);
+});
+
+test('pausing twice or resuming when not paused does nothing odd', () => {
+  const g = new AdventureLevel(LEVELS[0], { now: 0 });
+  g.setPaused(false, 100);
+  g.setPaused(true, 200);
+  g.setPaused(true, 900);
+  const ends = g.phaseEnds;
+  g.setPaused(false, 1200);
+  assert.equal(g.phaseEnds, ends + 1000);
+  assert.ok(!g.paused);
+});
