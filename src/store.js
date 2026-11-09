@@ -7,6 +7,7 @@
 // talking or breathing data, pulse values, or anything that identifies a person.
 
 import { emptyMonster } from './monster.js';
+import { emptyProgress, normalizeProgress } from './adventure/levels.js';
 
 export const SPONSOR_COLOURS = ['#ef6f5e', '#2f8fd8', '#f4a72a', '#7b4cd8', '#2f9e6b', '#e05aa8'];
 
@@ -19,7 +20,7 @@ export function defaultState() {
   return {
     version: 1,
     consent: null, // { version, acceptedAt }
-    settings: { telemetry: false, showPulse: false, breathMirror: true, sessionMinutes: 2, sound: true, music: true, volume: 0.7, howToSeen: false, diagnostics: false },
+    settings: { telemetry: false, showPulse: false, breathMirror: true, sessionMinutes: 2, sound: true, music: true, voice: true, volume: 0.7, howToSeen: false, diagnostics: false },
     storySeen: false, // the opening story plays once; it can be replayed from the home screen
     campaign: {
       cause: 'Local food bank',
@@ -34,6 +35,7 @@ export function defaultState() {
     monster: emptyMonster(),
     pastMonsters: [], // { name, stage, smiles, retiredAt } when the user starts a new monster
     sessions: [],
+    adventure: emptyProgress(), // Expression Adventure: levels unlocked and best stars / score
   };
 }
 
@@ -95,6 +97,7 @@ export function load() {
       monster: { ...base.monster, ...oldMonster, ...(s.monster || {}), diet: { ...base.monster.diet, ...(s.monster?.diet || {}) } },
       pastMonsters: Array.isArray(s.pastMonsters) ? s.pastMonsters : [],
       sessions,
+      adventure: normalizeProgress(s.adventure), // older saves have none: start at Level 1
     };
   } catch {
     return base;

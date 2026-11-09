@@ -29,7 +29,8 @@ import { JOY_REEL } from './src/joy-reel.js';
 import { HumourModel, personaFor } from './src/humour.js';
 import { MonsterVoice } from './src/monster-voice.js';
 import { sfx } from './src/sounds.js';
-import { unlockAudio, setAudioPrefs } from './src/audio.js';
+import { unlockAudio, setAudioPrefs, holdDuck } from './src/audio.js';
+import { MomoVoice } from './src/adventure/voice.js';
 import { music } from './src/music.js';
 import { drawReceipt } from './src/receipt.js';
 import { SimulatedSDK } from './src/simulator.js';
@@ -38,6 +39,10 @@ import {
 } from './src/monster.js';
 import { worldSvg } from './src/world.js';
 import { SIGNALS, SignalMonitor, BlinkTracker, talkingNow, BreathNormalizer } from './src/signals.js';
+import { ExpressionControls, controlScheme } from './src/adventure/controls.js';
+import { AdventureLevel } from './src/adventure/engine.js';
+import { LEVELS, isPlayable, levelById, recordLevel } from './src/adventure/levels.js';
+import { sceneSvg, thingSvg, bossSvg } from './src/adventure/scenes.js';
 
 const {
   SmartSpectraSDK, ProcessingStatus, ValidationCode, faceMetrics, cardioMetrics, breathingMetrics,
@@ -57,7 +62,7 @@ let currentView = null;
 
 function musicFor(view) {
   if (view === 'story') return 'story';
-  if (view === 'session') return 'play';
+  if (view === 'session') return session?.adv ? 'adventure' : 'play';
   const finalForm = stageFor(state.monster.smiles).key === 'final';
   return finalForm ? 'final' : 'home';
 }
@@ -96,8 +101,20 @@ const plural = (n, one, many) => `${n} ${n === 1 ? one : many}`;
 
 // ---------------------------------------------------------------- audio
 // Music and sound start only after the player has interacted with the app.
+const momoVoice = new MomoVoice({
+  synth: globalThis.speechSynthesis || null,
+  Utterance: globalThis.SpeechSynthesisUtterance || null,
+  onTalk: (talking) => holdDuck(talking), // the music dips while Momo talks
+});
+
 function applyAudioSettings() {
   const st = state.settings;
+  momoVoice.setEnabled(st.voice !== false);
+  momoVoice.setVolume(Number(st.volume ?? 0.7));
+  const vBtn = $('btn-voice');
+  vBtn.setAttribute('aria-pressed', String(st.voice !== false));
+  vBtn.textContent = st.voice !== false ? '\u{1F4AC} Voice on' : '\u{1F4AC} Voice off';
+  $('f-voice').checked = st.voice !== false;
   setAudioPrefs({ volume: Number(st.volume ?? 0.7), music: st.music !== false, sfx: st.sound !== false });
   music.sync();
   const mBtn = $('btn-music'), sBtn = $('btn-sfx');
@@ -131,6 +148,8 @@ $('vol').addEventListener('input', (e) => setSetting('volume', Number(e.target.v
 $('f-volume').addEventListener('input', (e) => setSetting('volume', Number(e.target.value) / 100));
 $('f-music').addEventListener('change', (e) => setSetting('music', e.target.checked));
 $('f-sfx').addEventListener('change', (e) => setSetting('sound', e.target.checked));
+$('f-voice').addEventListener('change', (e) => setSetting('voice', e.target.checked));
+$('btn-voice').addEventListener('click', () => setSetting('voice', state.settings.voice === false));
 document.addEventListener('visibilitychange', () => {
   // Pause the music while the window is hidden; it resumes where the screen wants it.
   music.request(document.hidden ? null : musicFor(currentView));
@@ -149,17 +168,21 @@ function liveMonster(s = session) {
 }
 
 function monsterLook(m) {
-  // Heart patches come from sponsors whose snack made *this* monster smile.
-  const sponsors = state.campaign.sponsors.map((sp) => ({ ...sp, snackSmiles: m.snackBy?.[sp.id] || 0 }));
   const stage = stageFor(m.smiles);
-  const traits = traitsFor(m, sponsors);
-  return { stage, traits, name: monsterName(traits, stage.key), xp: xpFor(m.smiles), tier: worldTier(m.smiles) };
+  // The hero of the adventure is always Momo. The kingdom gets its colour back level by level.
+  return { stage, traits: MOMO_TRAITS, name: 'Momo', xp: xpFor(m.smiles), tier: kingdomTier() };
 }
 
+/** How many levels have been finished (each gives the kingdom its laughter back). */
+function levelsDone() { return LEVELS.filter((l) => state.adventure.best[l.id]).length; }
+/** 0..4: the home world brightens as levels are finished (0 = grey, 4 = full colour). */
+function kingdomTier() { return Math.min(4, levelsDone()); }
+
+const MOMO_TRAITS = traitsFor(emptyMonster());
 let uidSeq = 0;
 function drawMonster(el, m, live = {}, opts = {}) {
-  const { stage, traits } = monsterLook(m);
-  const o = { stage: stage.key, traits, live, uid: `m${++uidSeq}`, egg: eggState(m.smiles), ...opts };
+  // Every screen shows Momo: the round pastel monster in its red adventure scarf.
+  const o = { traits: MOMO_TRAITS, live, uid: `m${++uidSeq}`, ...opts, stage: 'hatchling', egg: null, scarf: '#ef6f5e' };
   const svg = monsterSvg(o);
   if (el) {
     el.innerHTML = svg;
@@ -222,24 +245,24 @@ function dietLine(m) {
 // ---------------------------------------------------------------- story
 const SCENES = [
   {
-    title: 'A World Without Happiness',
-    text: 'Once upon a time, there was a world full of colours. Until one day, all the smiles disappeared...',
+    title: 'The Laughing Kingdom',
+    text: 'Once upon a time, there was a kingdom where everybody giggled all day long. Even the chickens.',
+    tier: 4, monster: null,
+  },
+  {
+    title: 'The Grumpy Shadow',
+    text: 'Then the Grumpy Shadow crept in and stole every single laugh. The colours faded, and the kingdom went quiet.',
     tier: 0, monster: null,
   },
   {
-    title: 'The Mysterious Egg',
-    text: 'In the very last grey meadow, a mysterious egg was waiting. Something inside was asleep.',
-    tier: 0, monster: { face: 'flat', tiny: true },
+    title: 'A Mysterious Egg',
+    text: 'But in the very last grey meadow, a little egg was waiting. Someone came along and smiled... and it began to wiggle!',
+    tier: 0, spark: true, monster: { egg: true, face: 'grin', cracks: 3 },
   },
   {
-    title: 'A New Friend',
-    text: 'Then, someone came along and smiled. The egg began to glow, and gave a tiny wiggle!',
-    tier: 0, spark: true, monster: { face: 'grin', tiny: true },
-  },
-  {
-    title: 'Your Adventure Begins',
-    text: 'Every smile fills the egg with happiness. Can you help it hatch, and bring the world back to life?',
-    tier: 1, monster: { face: 'grin', cracks: 1 },
+    title: 'Hello, Momo!',
+    text: '"Hi! I\u2019m Momo! Your face is my controller: smile to jump, look surprised for magic, blink to dodge, straight face to sneak. Let\u2019s get the laughs back!"',
+    tier: 1, spark: true, monster: { face: 'extra' },
   },
 ];
 let sceneIdx = 0;
@@ -252,10 +275,14 @@ function renderScene(i, animate = true) {
     const mon = $('story-monster');
     mon.hidden = !sc.monster;
     if (sc.monster) {
-      mon.classList.toggle('tiny', !!sc.monster.tiny);
-      mon.innerHTML = monsterSvg({ stage: 'egg', traits: traitsFor(emptyMonster()), live: { face: sc.monster.face }, egg: { cracks: sc.monster.cracks || 0 }, uid: `sm${i}` });
+      mon.classList.toggle('tiny', !!sc.monster.egg);
+      mon.innerHTML = sc.monster.egg
+        ? monsterSvg({ stage: 'egg', traits: MOMO_TRAITS, live: { face: sc.monster.face }, egg: { cracks: sc.monster.cracks || 0, shake: true }, uid: `sm${i}` })
+        : monsterSvg({ stage: 'hatchling', traits: MOMO_TRAITS, live: { face: sc.monster.face }, scarf: '#ef6f5e', uid: `sm${i}` });
     }
     $('story-title').textContent = sc.title;
+    momoVoice.stop();
+    momoVoice.say(sc.text.replace(/[\u201c\u201d"]/g, '')); // read aloud when a voice is available
     const t = $('story-text');
     t.textContent = sc.text;
     t.classList.remove('in'); void t.offsetWidth; t.classList.add('in');
@@ -278,6 +305,7 @@ function startStory(returnTo) {
 }
 
 function finishStory() {
+  momoVoice.stop();
   state.storySeen = true; // only this flag is saved; it holds no personal data
   persist();
   if (storyReturn === 'home' && store.hasConsent(state)) { renderHome(); show('home'); } else { renderConsent(); show('consent'); }
@@ -334,20 +362,33 @@ function renderChapters(m, look, el) {
   }).join('');
 }
 
+// One card per level: finished (with stars), open, or still locked.
+function renderLevelCards(el) {
+  el.innerHTML = LEVELS.map((l) => {
+    const best = state.adventure.best[l.id];
+    const open = l.n <= state.adventure.unlocked;
+    const status = best ? `${'\u2605'.repeat(best.stars)}${'\u2606'.repeat(3 - best.stars)} \u00b7 best ${best.score} points` : open ? 'Open: ready to play' : `Finish Level ${l.n - 1} to open`;
+    return `<li class="${best ? 'done' : open ? 'now' : 'locked'}">
+      <span class="ch-num">${l.n}</span>
+      <strong>${esc(l.name)}</strong>
+      <span class="ch-who">Boss: ${esc(l.boss.name)}</span>
+      <span class="ch-brings">${esc(l.mission)}</span>
+      <span class="ch-status">${status}</span></li>`;
+  }).join('');
+}
+
 function renderWorld() {
   const m = liveMonster(null);
   const look = monsterLook(m);
   $('world-hero-art').innerHTML = worldSvg({ tier: look.tier, uid: 'whero' });
   drawMonster($('world-monster'), m, { face: m.smiles > 0 ? 'grin' : 'flat' });
-  const restored = look.stage.next ? Math.round(((look.stage.index + look.stage.progress) / STAGES.length) * 100) : 100;
-  $('world-pct').textContent = `${restored}%`;
-  $('world-next').textContent = look.stage.next
-    ? `Chapter ${look.stage.level}: ${nextLine(look.stage)}, and ${look.stage.next.brings} come back.`
-    : 'Every chapter is complete. The whole world is smiling again!';
-  const eaten = DIET_KINDS.some((k) => (m.diet[k] || 0) > 0);
-  $('world-diet').hidden = !eaten;
-  $('world-diet').textContent = eaten ? dietLine(m) : '';
-  renderChapters(m, look, $('world-chapters'));
+  const done = levelsDone();
+  $('world-pct').textContent = `${Math.round((done / LEVELS.length) * 100)}%`;
+  $('world-next').textContent = done < LEVELS.length
+    ? `Next: Level ${currentLevel().n}, ${currentLevel().name}.`
+    : 'Every land is laughing again. Replay any level to raise more for charity.';
+  $('world-diet').hidden = true;
+  renderLevelCards($('world-chapters'));
   const { smiles, total } = campaignTotals();
   $('w-smiles').textContent = smiles;
   $('w-total').textContent = formatCents(total);
@@ -378,7 +419,7 @@ const homeWalk = new Wanderer({ now: Date.now() });
 let homeAct = { action: 'idle', look: 0 };
 
 function walkWorld(w, look, extra = false) {
-  w.setWorld({ canWalk: look.stage.key !== 'egg' && !extra && !reducedMotion, flowers: look.tier >= 2 });
+  w.setWorld({ canWalk: !extra && !reducedMotion, flowers: look.tier >= 2 });
 }
 
 function drawHomeMonster() {
@@ -420,20 +461,39 @@ function renderHome() {
   walkWorld(homeWalk, look);
   homeWalk.poke(Date.now());
   drawHomeMonster();
-  $('home-level').textContent = `Lv ${look.stage.level}`;
-  $('home-name').textContent = look.name;
-  $('home-stage').textContent = chapterLine(look.stage);
-  $('home-stage-fill').style.width = `${look.stage.key === 'egg' ? eggState(m.smiles).happiness * 100 : xpWidth(look.xp)}%`;
-  $('home-xp').textContent = barText(look, m);
-  markBar('home-stage-fill', look);
-  $('home-next').textContent = nextLine(look.stage);
-  $('home-goal-line').textContent = look.stage.key === 'egg'
-    ? `\u{1F95A} Press PLAY and smile ${plural(look.stage.toNext, 'time', 'times')} to hatch the egg`
-    : look.stage.next
-    ? `\u{1F60A} Press PLAY and smile ${plural(look.stage.toNext, 'time', 'times')} to finish Chapter ${look.stage.level}`
-    : '\u{1F308} You restored the whole world! Keep playing to raise more for charity.';
+  const done = levelsDone();
+  const stars = LEVELS.reduce((a, l) => a + (state.adventure.best[l.id]?.stars || 0), 0);
+  $('home-level').textContent = `\u2605 ${stars} / ${LEVELS.length * 3}`;
+  $('home-name').textContent = 'Momo';
+  $('home-stage').textContent = 'Expression Adventure \u00b7 Your face is the controller!';
+  $('home-stage-fill').style.width = `${(done / LEVELS.length) * 100}%`;
+  $('home-xp').textContent = `Laughs returned: ${done} / ${LEVELS.length} lands`;
+  $('home-stage-fill').parentElement.classList.remove('happiness');
+  $('home-next').textContent = done < LEVELS.length ? currentLevel().mission : 'The Grumpy Shadow is laughing too. The whole Laughing Kingdom is happy again!';
+  const next = currentLevel();
+  const allDone = LEVELS.every((l) => state.adventure.best[l.id]);
+  $('home-goal-line').textContent = allDone
+    ? '\u{1F308} Every laugh is back in the Laughing Kingdom! Replay any level to raise more for charity.'
+    : `\u{1F60A} Next: Level ${next.n}, ${next.name}`;
+  renderLevelMap();
   renderImpact();
 }
+
+function renderLevelMap() {
+  $('level-map').innerHTML = LEVELS.map((l) => {
+    const open = isPlayable(l) && l.n <= state.adventure.unlocked;
+    const best = state.adventure.best[l.id];
+    const stars = best ? '\u2605'.repeat(best.stars) + '\u2606'.repeat(3 - best.stars) : open ? 'New!' : '\u{1F512}';
+    return `<button type="button" class="level-chip${open ? '' : ' locked'}" data-level="${l.id}" ${open ? '' : 'disabled'} style="--lc:${l.colour}" title="${esc(open ? l.mission : `Finish Level ${l.n - 1} to open`)}">
+      <span class="lc-n">${l.n}</span><span class="lc-name">${esc(l.name)}</span><span class="lc-stars">${stars}</span></button>`;
+  }).join('');
+}
+$('level-map').addEventListener('click', (e) => {
+  const b = e.target.closest('.level-chip');
+  if (!b || b.disabled) return;
+  playLevelId = b.dataset.level;
+  if (!state.settings.howToSeen) openHowTo(true); else startSession(playLevelId);
+});
 
 // ---------------------------------------------------------------- charity & settings
 function renderCampaign() {
@@ -539,14 +599,12 @@ $('btn-export').addEventListener('click', () => {
   setTimeout(() => URL.revokeObjectURL(url), 1000);
 });
 $('btn-reset-monster').addEventListener('click', () => {
-  const m = liveMonster(null);
-  const look = monsterLook(m);
-  if (!confirm(`Say goodbye to ${look.name} and raise a new baby monster? Pledges and game totals are kept.`)) return;
-  if (m.smiles > 0) state.pastMonsters.push({ name: look.name, stage: look.stage.label, smiles: m.smiles, retiredAt: new Date().toISOString() });
-  state.monster = { ...emptyMonster(), bornAt: new Date().toISOString() };
+  if (!confirm('Start the adventure again from Level 1? Your stars are cleared. Pledges, sponsors and game totals are kept.')) return;
+  state.adventure = { unlocked: 1, best: {} };
   persist();
   renderCampaign();
-  toast('A new little monster was born.');
+  renderWorld();
+  toast('Momo is back at the Silent Village, ready to go!');
 });
 
 // ---------------------------------------------------------------- play
@@ -669,9 +727,9 @@ function updateMeter(level) {
 }
 
 /** Floating "+10 XP" / "+15¢" / heart pops above the monster. */
-function popAt(text, cls, dx = 0, delay = 0) {
+function popAt(text, cls, dx = 0, delay = 0, anchor = 's-monster') {
   setTimeout(() => {
-    const box = $('s-monster').getBoundingClientRect();
+    const box = $(anchor).getBoundingClientRect();
     const el = document.createElement('div');
     el.className = `pop ${cls}`;
     el.textContent = text;
@@ -702,6 +760,7 @@ function liveFace() {
 
 function renderMonsterNow() {
   if (!session) return;
+  if (session.adv) { drawMomo(); return; }
   const m = liveMonster();
   const look = monsterLook(m);
   const hatching = session.hatching ? { stage: 'egg', egg: { cracks: 3, shake: true, hatching: true } } : {};
@@ -756,6 +815,7 @@ function renderSession() {
   $('s-smiles').textContent = session.smiles;
   $('s-money').textContent = formatCents(cents);
   renderSignals();
+  if (session.adv) { renderAdvHud(); return; }
   const left = Math.max(0, session.deadline - Date.now());
   $('s-timer').textContent = fmtSecs(left + 999);
   if (left <= 0) endSession();
@@ -837,6 +897,19 @@ function onSmile(peakHappy = 0) {
   const s = session;
   const sponsors = state.campaign.sponsors;
   const worth = marginalRate(sponsors, s.before + s.smiles);
+  if (s.adv) {
+    // In the adventure a qualifying smile still counts once for the charity, exactly as before.
+    s.smiles += 1; // the single place a qualifying smile is counted
+    if (worth > 0) popAt(`+${worth}\u00a2 for charity`, 'cents', 30, 250, 'adv-momo');
+    if (s.adv.snack && Date.now() < s.adv.snackUntil) {
+      s.snack[s.adv.snack.id] = (s.snack[s.adv.snack.id] || 0) + 1;
+      s.adv.snackUntil = 0; // one credit per joke
+      sfx.snack();
+      advSay(`${s.adv.snack.name}\u2019s joke got you! Thanks, ${s.adv.snack.name}!`);
+    }
+    renderSession();
+    return;
+  }
   const before = stageFor(liveMonster().smiles);
   const tierBefore = worldTier(liveMonster().smiles);
   s.walk.poke(Date.now());
@@ -890,6 +963,7 @@ function onSmile(peakHappy = 0) {
 function applyMood(mood, events, now) {
   const s = session;
   if (!mood || !s) return;
+  if (s.adv) { if (mood.face !== s.face) { s.face = mood.face; scheduleMonster(); } return; }
   if (events.has('jump')) {
     s.surprises += 1; // big sparkly eyes grow with surprise moments
     bounceClass('jump', 700);
@@ -927,12 +1001,17 @@ function handleMetrics(m) {
     const events = new Set();
     for (const e of expressions) { mood = s.mood.push(e, now); mood.events.forEach((x) => events.add(x)); }
     applyMood(mood, events, now);
-    const face = s.face;
-    const line = s.voice.onTick({ face }, now);
-    if (line) speak(line.text);
+    if (s.adv) {
+      // Your face is the controller: real HAPPY / SURPRISE / NEUTRAL scores become actions.
+      for (const e of expressions) s.adv.pending.push(...s.adv.controls.push(e, now));
+    } else {
+      const line = s.voice.onTick({ face: s.face }, now);
+      if (line) speak(line.text);
+    }
   }
 
   if (f?.blinking?.length) {
+    if (s.adv) s.adv.pending.push(...s.adv.controls.pushBlinks(f.blinking, now));
     const wasClosed = s.blink.closed;
     if (s.blink.push(f.blinking) > 0) {
       // it blinks back, and every few blinks it winks instead
@@ -950,7 +1029,7 @@ function handleMetrics(m) {
       clearInterval(s.talkTimer);
       if (t) {
         s.talkTimer = setInterval(scheduleMonster, 170); // mouth moves while the SDK says you're talking
-        const line = s.voice.onTalking(now);
+        const line = s.adv ? null : s.voice.onTalking(now);
         if (line) speak(line.text);
       }
       scheduleMonster();
@@ -1018,14 +1097,236 @@ function wireSdk(s) {
   });
 }
 
-async function startSession() {
+
+// ---------------------------------------------------------------- Expression Adventure
+// Momo's levels. ExpressionControls turns the real SDK signals into jump / magic / dodge / sneak,
+// AdventureLevel decides what happens, and this part only draws it.
+
+/** The level PLAY starts: the furthest one that is open and finished being built. */
+function currentLevel() {
+  const open = LEVELS.filter((l) => isPlayable(l) && l.n <= state.adventure.unlocked);
+  return open[open.length - 1] || LEVELS[0];
+}
+
+let momoKey = '';
+function drawMomo() {
+  const s = session;
+  if (!s?.adv) return;
+  const now = Date.now();
+  const pose = s.adv.pose;
+  const live = liveFace();
+  live.sleeping = false;
+  live.look = 0.4; // Momo faces the way it is running
+  if (pose === 'dance' || pose === 'magic') live.face = 'extra';
+  else if (pose === 'oops' || pose === 'dodge') live.face = 'wow';
+  const key = JSON.stringify([live.face, live.eyesClosed, live.wink, live.talkOpen, live.breath != null ? Math.round(live.breath * 20) : null]);
+  if (key === momoKey) return;
+  momoKey = key;
+  $('adv-momo-svg').innerHTML = monsterSvg({ stage: 'hatchling', traits: MOMO_TRAITS, live, uid: `momo${now % 1000}`, scarf: '#ef6f5e' });
+}
+
+function advSay(text) {
+  const b = $('adv-speech');
+  b.textContent = text;
+  b.hidden = false;
+  b.classList.remove('say-in'); void b.offsetWidth; b.classList.add('say-in');
+  clearTimeout(advSay.t);
+  advSay.t = setTimeout(() => { b.hidden = true; }, Math.max(2600, text.length * 60));
+  momoVoice.say(text); // spoken too, when the computer has a voice and voice is on
+}
+
+function renderAdvHud() {
+  const a = session.adv;
+  const v = a.game.view(Date.now());
+  $('s-level').textContent = `Level ${a.level.n}`;
+  $('s-name').textContent = a.level.name;
+  $('s-stage').textContent = v.boss || v.phase === 'bossIntro' ? `Boss: ${a.level.boss.name}` : `Mission: get past ${a.level.steps.length} things, then the boss`;
+  $('s-stage-fill').style.width = `${Math.round(v.progress * 100)}%`;
+  $('s-xp').textContent = `Laughter back: ${Math.round(v.progress * 100)}%`;
+  $('s-timer').textContent = v.score;
+  $('s-timer-label').textContent = 'points';
+}
+
+function setPose(pose) {
+  const a = session.adv;
+  if (a.pose === pose) return;
+  a.pose = pose;
+  const el = $('adv-momo-pose');
+  el.className = 'adv-momo-pose';
+  void el.offsetWidth; // restart the animation even when the same pose comes back
+  el.classList.add(`pose-${pose}`);
+  drawMomo();
+}
+
+function onAdvEvent(e, now) {
+  const s = session;
+  const a = s.adv;
+  const thing = $('adv-thing');
+  switch (e.type) {
+    case 'say':
+      advSay(e.text);
+      // A real smile while (or just after) the sponsor's joke is up gives that sponsor the credit.
+      if (a.snack && e.text === a.snack.text) a.snackUntil = Date.now() + 5500;
+      break;
+    case 'challenge': {
+      const p = $('adv-prompt');
+      $('adv-prompt-text').textContent = e.prompt;
+      p.hidden = false;
+      p.classList.toggle('retry', !!e.retry);
+      p.classList.remove('say-in'); void p.offsetWidth; p.classList.add('say-in');
+      if (!e.step.boss || e.step.need === 'dodge') {
+        thing.innerHTML = thingSvg(e.step.thing);
+        thing.className = `adv-thing need-${e.step.need}`;
+        thing.style.left = '95%';
+        thing.hidden = false;
+      }
+      sfx.click();
+      break;
+    }
+    case 'success': {
+      $('adv-prompt').hidden = true;
+      if (e.step.need === 'magic') sfx.wow();
+      if (!thing.hidden) {
+        // jump: it slides under Momo; magic: it gets zapped; dodge: it flies over; sneak: Momo tiptoes past
+        const how = { jump: 'gone', magic: 'zapped', dodge: 'flown', sneak: 'passed' }[e.step.need] || 'gone';
+        thing.classList.add(how);
+        thing.style.left = how === 'flown' || how === 'passed' ? '-12%' : how === 'gone' ? '24%' : thing.style.left;
+      }
+      if (e.step.boss) {
+        a.bossHits += 1;
+        const boss = $('adv-boss');
+        boss.innerHTML = bossSvg(a.level.boss.thing, a.bossHits / a.bossTotal);
+        boss.classList.remove('hit'); void boss.offsetWidth; boss.classList.add('hit');
+        sfx.golden();
+      } else if (e.step.need !== 'magic') sfx.happy();
+      sfx.xp();
+      popAt(`+${e.points}`, e.firstTry ? 'xp gold' : 'xp', -20, 0, 'adv-momo');
+      setTimeout(() => sfx.bloom(), 380); // a little colour comes back to the village
+      break;
+    }
+    case 'oops':
+      $('adv-prompt').hidden = true;
+      if (e.step.need === 'sneak') thing.classList.add('awake'); // the guard wakes up: "!"
+      setTimeout(() => thing.classList.add('gone'), e.step.need === 'sneak' ? 900 : 0);
+      sfx.crack();
+      break;
+    case 'boss': {
+      const boss = $('adv-boss');
+      boss.innerHTML = bossSvg(a.level.boss.thing, 0);
+      boss.hidden = false;
+      boss.className = 'adv-boss enter';
+      $('adv').classList.add('boss-fight');
+      sfx.chapter();
+      break;
+    }
+    case 'phase':
+      if (e.phase === 'bossIntro') music.request('boss');
+      if (e.phase === 'outro') music.request('victory');
+      if (e.phase === 'outro') {
+        $('adv-boss').className = 'adv-boss won';
+        sfx.levelUp();
+        for (let i = 0; i < 6; i++) popAt('♥', 'heart', (i - 2.5) * 34, 200 + i * 140, 'adv-momo');
+      }
+      break;
+    case 'complete': {
+      const sum = e.summary;
+      a.result = sum;
+      state.adventure = recordLevel(state.adventure, a.level.id, sum);
+      persist();
+      $('adv-stars').innerHTML = [1, 2, 3].map((n) => `<span class="${n <= sum.stars ? '' : 'off'}">★</span>`).join('');
+      $('adv-done-title').textContent = `${a.level.name} is laughing again!`;
+      $('adv-done-line').textContent = sum.misses === 0
+        ? 'Not a single tumble. Momo is doing a very proud wiggle.'
+        : `Momo tumbled ${plural(sum.misses, 'time', 'times')} and got back up every time.`;
+      $('adv-done-score').textContent = sum.score;
+      $('adv-done-smiles').textContent = s.smiles;
+      $('adv-done').hidden = false;
+      break;
+    }
+    default:
+  }
+  void now;
+}
+
+function advFrame() {
+  const s = session;
+  if (!s?.adv) return;
+  const a = s.adv;
+  const now = Date.now();
+  a.controls.tick(now);
+  const st = s.signals.status(now);
+  // If the SDK isn't sending blinks (after a few seconds of face data), dodging uses a surprised face.
+  const blinkLive = st.blinking.live || !st.expressions.live || now - s.startedAt < 6000;
+  const scheme = controlScheme({ blinkLive });
+  const input = { actions: a.pending.splice(0), calmMs: a.controls.calmFor(now), scheme };
+  for (const e of a.game.tick(now, input)) onAdvEvent(e, now);
+
+  const v = a.game.view(now);
+  setPose(v.pose);
+  const stage = $('adv');
+  stage.classList.toggle('is-running', v.phase === 'run');
+  stage.style.setProperty('--grey', (1 - v.progress * 0.95).toFixed(3));
+  const inWindow = v.phase === 'challenge';
+  if (inWindow) {
+    $('adv-window-fill').style.width = `${Math.round((1 - v.t) * 100)}%`;
+    if (!$('adv-thing').hidden) $('adv-thing').style.left = `${(95 - v.t * 62).toFixed(1)}%`;
+  }
+  const sneak = inWindow && v.step?.need === 'sneak';
+  $('adv-sneak').hidden = !sneak;
+  if (sneak) $('adv-sneak-fill').style.width = `${Math.round(a.game.sneakProgress(now, a.controls.calmFor(now)) * 100)}%`;
+  $('adv-backup').hidden = !(inWindow && v.step?.need === 'dodge' && !blinkLive);
+  if (v.phase === 'run' || v.phase === 'intro' || v.phase === 'bossIntro') $('adv-thing').hidden = true;
+  a.raf = requestAnimationFrame(advFrame);
+}
+
+/** A sponsor's snack joke, told by Momo at the start of a level (taking turns between sponsors). */
+function snackFor(level) {
+  const withSnack = state.campaign.sponsors.filter((sp) => (sp.snack || '').trim());
+  if (!withSnack.length) return null;
+  const sp = withSnack[(state.sessions.length + level.n) % withSnack.length];
+  return { id: sp.id, name: sp.name, text: `Snack time! ${sp.name} sent you a joke: ${sp.snack.trim()}` };
+}
+
+function startAdventure(level, now) {
+  const snack = snackFor(level);
+  const played = snack ? { ...level, intro: [...level.intro, snack.text] } : level;
+  const a = {
+    level,
+    snack,
+    snackUntil: 0,
+    game: new AdventureLevel(played, snack ? { now, introLineMs: 4200 } : { now }),
+    controls: new ExpressionControls(),
+    pending: [],
+    pose: null,
+    bossHits: 0,
+    bossTotal: level.boss.steps.length,
+    result: null,
+    raf: 0,
+  };
+  session.adv = a;
+  session.advBefore = JSON.parse(JSON.stringify(state.adventure));
+  momoKey = '';
+  $('adv-scene').innerHTML = sceneSvg(level.id);
+  for (const id of ['adv-thing', 'adv-boss', 'adv-prompt', 'adv-done', 'adv-speech', 'adv-sneak', 'adv-backup']) $(id).hidden = true;
+  $('adv-boss').className = 'adv-boss';
+  $('adv').classList.remove('boss-fight', 'is-running');
+  for (const e of a.game.tick(now)) onAdvEvent(e, now);
+  a.raf = requestAnimationFrame(advFrame);
+}
+$('btn-adv-next').addEventListener('click', () => endSession());
+
+let playLevelId = null; // a level picked on the level map; PLAY uses the next open level
+async function startSession(levelId = playLevelId) {
+  playLevelId = null;
   if (!store.hasConsent(state)) { renderConsent(); show('consent'); return; }
   showError('');
   detector = new SmileDetector();
   const now = Date.now();
+  const level = levelById(levelId) || currentLevel();
   session = {
     startedAt: now,
-    deadline: now + state.settings.sessionMinutes * 60000,
+    adv: null,
+    deadline: level ? Infinity : now + state.settings.sessionMinutes * 60000, // a level ends when it's done
     smiles: 0,
     before: store.totalSmiles(state),
     stageAtStart: stageFor(state.monster.smiles),
@@ -1063,12 +1364,15 @@ async function startSession() {
   updateMeter(0);
   setHint('Starting the SDK...');
   delete drawnTier['s-world'];
-  nextCard();
-  restartReelTimer();
+  $('adv').hidden = !level;
+  $('adv').closest('.stage').classList.toggle('is-adv', !!level);
+  $('s-timer-label').textContent = level ? 'points' : 'left';
+  if (level) startAdventure(level, now);
+  else { nextCard(); restartReelTimer(); }
   show('session');
   renderMonsterNow();
   renderSession();
-  speak(session.voice.start(now).text);
+  if (!level) speak(session.voice.start(now).text);
   session.timer = setInterval(renderSession, 500);
 
   try {
@@ -1079,6 +1383,8 @@ async function startSession() {
   } catch (err) {
     showError(err.message || String(err));
     setHint('Could not start.', 'err');
+    // Without the camera there are no face controls, so the level waits instead of running on.
+    if (session?.adv) { cancelAnimationFrame(session.adv.raf); momoVoice.stop(); $('adv-prompt').hidden = true; }
   }
 }
 
@@ -1106,6 +1412,7 @@ async function endSession() {
   const s = session;
   const now = Date.now();
   const signalStatus = s.signals.status(now);
+  if (s.adv) { cancelAnimationFrame(s.adv.raf); momoVoice.stop(); }
   session = null;
   await stopSdk();
 
@@ -1123,7 +1430,7 @@ async function endSession() {
   };
   state.sessions.push(record);
   persist();
-  lastSummary = { record, delta };
+  lastSummary = { record, delta, advBefore: s.advBefore || null };
 
   const m = liveMonster(null);
   const look = monsterLook(m);
@@ -1132,7 +1439,9 @@ async function endSession() {
   // Growth: a hatch or an evolution gets a before -> after moment.
   const grew = s.evolutions.length > 0;
   const hatched = grew && s.stageAtStart.key === 'egg';
-  $('sum-title').textContent = hatched ? 'Your egg hatched!' : grew ? `Your monster grew into a ${look.stage.label}!` : s.smiles > 0 ? 'Great game!' : 'Nice try!';
+  $('sum-title').textContent = s.adv
+    ? (s.adv.result ? `${s.adv.level.name} complete! ${'\u2605'.repeat(s.adv.result.stars)}` : `You left ${s.adv.level.name} early. Momo will wait for you!`)
+    : hatched ? 'Your egg hatched!' : grew ? `Your monster grew into a ${look.stage.label}!` : s.smiles > 0 ? 'Great game!' : 'Nice try!';
   $('sum-before').hidden = !grew;
   $('sum-arrow').hidden = !grew;
   if (grew) {
@@ -1168,6 +1477,7 @@ async function endSession() {
     <strong>${esc(l.name)}</strong> pledged ${formatCents(l.cents)}${l.capped ? ' (cap reached)' : ''}${l.snack ? ` · their snack earned ${plural(l.snack, 'smile', 'smiles')}` : ''}</li>`).join('');
 
   const extras = [];
+  if (s.adv) extras.push(`Level ${s.adv.level.n}: ${s.adv.game.score} points`, `Tumbles: ${s.adv.game.misses}`);
   if (s.bestCombo > 1) extras.push(`Best combo: x${s.bestCombo}`);
   if (s.golden > 0) extras.push(`Golden grins: ${s.golden}`);
   if (s.surprises > 0) extras.push(`Surprise moments: ${s.surprises}`);
@@ -1195,12 +1505,51 @@ async function endSession() {
     persona,
     date: new Date(),
   };
+  $('sum-xp-label').textContent = 'XP';
+  $('sum-charity-end').hidden = true;
+  if (s.adv) showAdventureSummary(s, record, look, m);
   $('receipt-preview').hidden = true;
   show('summary');
   if (s.evolutions.length) sfx.levelUp();
   ending = false;
 }
 $('btn-end').addEventListener('click', endSession);
+
+// The results screen for a level: stars, points, smiles for charity and, after the Final Laugh,
+// Momo explains where the pledges go.
+function showAdventureSummary(s, record, look, m) {
+  const a = s.adv;
+  const res = a.result;
+  $('sum-level').textContent = `Level ${a.level.n}`;
+  $('sum-stage').textContent = a.level.name;
+  $('sum-name').textContent = 'Momo';
+  $('sum-xp-gain').textContent = a.game.score;
+  $('sum-xp-label').textContent = 'points';
+  $('sum-evolved').hidden = !res;
+  $('sum-evolved').textContent = res ? `${'\u2605'.repeat(res.stars)}${'\u2606'.repeat(3 - res.stars)}  ${res.misses === 0 ? 'A perfect run!' : `Momo tumbled ${plural(res.misses, 'time', 'times')} and got back up every time.`}` : '';
+  const next = LEVELS.find((l) => l.n === a.level.n + 1);
+  $('sum-xp').textContent = !res ? 'Momo saved your spot. Press PLAY to try again.'
+    : next ? `Level ${next.n}, ${next.name}, is open!` : 'You gave back every stolen laugh!';
+  $('sum-persona').textContent = '';
+  drawMonster($('summary-monster'), m, { face: res ? 'extra' : 'soft' });
+  lastReceipt.stageLabel = `Level ${a.level.n} \u00b7 ${a.level.name}${res ? ` \u00b7 ${'\u2605'.repeat(res.stars)}` : ''}`;
+
+  if (res && a.level.id === 'finale') {
+    const sponsors = state.campaign.sponsors;
+    const { total } = campaignTotals();
+    const confirmed = confirmedTotal(sponsors);
+    const cause = state.campaign.cause || 'your charity';
+    const text = `You did it! And here's a secret: every real smile you made on this adventure also counted for ${cause}. `
+      + `Your sponsors have promised ${formatCents(total)} so far. `
+      + `That's a promise, not money yet: they give it to ${cause} themselves, and you never pay anything. `
+      + (confirmed > 0 ? `${formatCents(confirmed)} has already been donated. ` : '')
+      + 'Save your Smile Receipt and send it to them. Thank you for making the whole kingdom laugh again!';
+    $('sum-charity-text').textContent = text;
+    $('sum-charity-momo').innerHTML = drawMonster(null, m, { face: 'grin' });
+    $('sum-charity-end').hidden = false;
+    setTimeout(() => momoVoice.say(text), 900);
+  }
+}
 
 function applyMonsterDelta(d, sign) {
   const m = state.monster;
@@ -1236,13 +1585,14 @@ $('btn-discard').addEventListener('click', () => {
   if (lastSummary) {
     state.sessions = state.sessions.filter((x) => x.id !== lastSummary.record.id);
     applyMonsterDelta(lastSummary.delta, -1);
+    if (lastSummary.advBefore) state.adventure = lastSummary.advBefore; // stars and unlocks from this game go too
   }
   lastSummary = null;
   lastReceipt = null;
   persist();
   renderHome();
   show('home');
-  toast('Game removed. Your monster forgot it ever happened.');
+  toast('Game removed, as if it never happened.');
 });
 
 // ---------------------------------------------------------------- privacy

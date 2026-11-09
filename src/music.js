@@ -46,6 +46,42 @@ export const TRACKS = Object.freeze({
     ],
     lead: 'pluck', arp: null, bass: true, drums: true,
   },
+  // Expression Adventure levels: a bouncy march for running and jumping.
+  adventure: {
+    bpm: 128,
+    chords: [[48, 52, 55], [45, 48, 52], [41, 45, 48], [43, 47, 50]],
+    melody: [
+      [72, _, 72, 74, 76, _, 72, _],
+      [76, _, 77, 76, 74, _, 69, _],
+      [69, 72, 77, _, 76, _, 74, _],
+      [74, 76, 74, 71, 67, _, _, _],
+    ],
+    lead: 'pluck', arp: null, bass: true, drums: true,
+  },
+  // Boss: a sneaky, comic minor groove. Funny-grumpy, never scary.
+  boss: {
+    bpm: 136,
+    chords: [[45, 48, 52], [45, 48, 52], [41, 45, 48], [40, 44, 47]],
+    melody: [
+      [69, _, 72, _, 71, 69, 68, _],
+      [69, _, 76, _, 74, 72, 71, _],
+      [72, _, 74, 72, 69, _, 65, _],
+      [64, _, 68, _, 71, _, 76, _],
+    ],
+    lead: 'pluck', arp: null, bass: true, drums: true,
+  },
+  // Victory: a short, happy fanfare that loops gently while Momo dances.
+  victory: {
+    bpm: 112,
+    chords: [[48, 52, 55, 60], [53, 57, 60, 65], [55, 59, 62, 67], [48, 52, 55, 60]],
+    melody: [
+      [72, 76, 79, _, 84, _, 79, _],
+      [81, _, 77, _, 81, _, 84, _],
+      [83, _, 79, _, 74, 76, 77, 79],
+      [84, _, _, _, 79, _, 72, _],
+    ],
+    lead: 'bell', arp: 'piano', bass: true, drums: false,
+  },
   // Final chapter: emotional, uplifting.
   final: {
     bpm: 72,

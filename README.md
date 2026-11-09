@@ -1,10 +1,12 @@
-# Smile Monster: The Egg of Joy 🥚✨
+# Smile Monster: Expression Adventure 😊✨
 
-![Smile Monster cover](docs/cover.png)
+**Your face is the controller!**
 
-*"A mysterious egg is waiting in a world without happiness. Every smile helps it hatch, and helps the little monster inside bring that world back to life."*
+![Smile Monster: Expression Adventure](docs/cover.png)
 
-**Smile Monster** is a cute, story-driven desktop game. Your real smiles, picked up live from the camera by the [Presage SmartSpectra SDK](https://github.com/Presage-Security/SmartSpectra), give a little pastel monster happiness energy. It grows up over five chapters, and its grey, faded world comes back to life with each one. At the same time, friends, family or coworkers pledge an amount per smile to a charity you pick, so your smiles also do some good in the real world.
+*The Grumpy Shadow stole every laugh in the Laughing Kingdom. Help Momo, a small round monster in a red scarf, win them back using nothing but your face.*
+
+**Smile Monster: Expression Adventure** is a cute, funny desktop game where your real facial expressions, read live from the camera by the [Presage SmartSpectra SDK](https://github.com/Presage-Security/SmartSpectra), control the hero. Smile and Momo jumps. Look surprised and Momo casts magic. Blink and Momo ducks. Keep a straight face and Momo sneaks. Five levels, five bosses that get cheered up (nobody gets hurt), and every real smile also adds to a sponsor pledge for a charity you pick.
 
 Built for the DEV Presage SmartSpectra SDK Challenge (`#presagechallenge`).
 
@@ -12,65 +14,70 @@ Built for the DEV Presage SmartSpectra SDK Challenge (`#presagechallenge`).
 
 | | |
 | --- | --- |
-| ![The egg almost hatching](docs/screenshots/05-egg-almost-hatching.png) | ![Growth screen after hatching](docs/screenshots/07-growth-egg-hatched.png) |
-| ![Extra happy while you keep smiling](docs/screenshots/09-gameplay-extra-happy.png) | ![The fully restored world](docs/screenshots/10-world-restored.png) |
+| ![Smile to jump over the fence](docs/screenshots/04-level1-smile-to-jump.png) | ![The Grumpy Chicken boss](docs/screenshots/06-level1-grumpy-chicken.png) |
+| ![Blink to dodge the Ice Penguin's snowballs](docs/screenshots/08-mountain-blink-dodge.png) | ![Straight face to sneak past a guard](docs/screenshots/09-castle-sneak.png) |
 
 *Screenshots in `docs/screenshots` were taken with `npm run simulate` (note the yellow banner), because the build machine has no camera.*
 
-## The game
+## How you play
 
-**Opening story.** Four short full-screen scenes tell the story: a world that lost its smiles, a mysterious egg in the last grey meadow, a first smile that makes it glow and wiggle, and the egg starting to crack. There's a **Continue** button, **Skip story**, and a final **LET'S BEGIN!**. The story plays once (it's remembered on this device) and can be replayed from My world. The camera is never on during the story.
-
-**Five chapters, five levels.** It starts as an egg: each of your first three smiles fills its happiness bar and adds a crack, and the third one hatches it. After that every qualifying smile gives **+10 XP**, and it's the same round, squishy character at every level; it just grows up:
-
-| Level | Chapter | Smiles | The monster | The world |
-| --- | --- | --- | --- | --- |
-| 1 | The Mysterious Egg | 0 | Mysterious Egg: it glows and wiggles when you smile, cracks a little with each smile, shakes when it's nearly ready, and eyes peek out of the crack | grey; the first smile brings back glowing lights |
-| 2 | The Awakening | 3 | Baby Monster, just hatched, with a bit of eggshell on its head, shy | flowers and grass return |
-| 3 | The Power of Joy | 8 | Growing Monster with a sprout and a little bud, cheerful | trees, a warm sun and twinkling stars |
-| 4 | Spread the Happiness | 15 | Happy Monster with sparkle wings, playful | a colourful sky and a rainbow |
-| 5 | The World of Smiles | 25 | Guardian of Joy with a flower crown and a glow, proud | the full magical world: mushroom houses, floating hearts |
-
-Each level-up plays an evolution animation, a fanfare that's different for every level, a chapter-complete chime and a line from the monster.
-
-**Humour shapes how it looks.** Each counted smile is credited to the card that was on screen when the smile started, and that category becomes part of the monster's diet. Puns grow tiny horns, animal facts grow fluffy ears, memories make it glow, daydreams give it star freckles, sponsor snacks add hearts in the sponsor's colour, and surprise moments make its sparkly eyes bigger. The top two categories set its colour and name (for example "Fluffy Furbun" or "Dreamy Starbean"). The joke reel also learns, within a game, which category works on you.
-
-**A monster that mirrors your real signals.** During a game:
-
-| You | SDK signal | The monster |
+| Your face | SDK signal | Momo |
 | --- | --- | --- |
-| Smile | `EXPRESSIONS` (HAPPY score) | grins and waves its arms (the egg glows and wiggles), and earns energy when the smile counts. Keep smiling for 3 seconds and it gets extra happy, with hearts. When you stop, it eases back to calm through a soft smile |
-| Look surprised | `EXPRESSIONS` (SURPRISE score) | opens its eyes and mouth wide and does a little jump |
-| Blink | `BLINKING` (`detected` flag) | blinks back, and every fifth blink it winks instead |
-| Talk | `TALKING` (`detected` flag) | moves its mouth along with you |
-| Breathe | breathing bundle (chest trace, optional) | its body rises and falls with yours |
+| Smile | `EXPRESSIONS`, HAPPY score | jumps (and bounces on bosses) |
+| Look surprised | `EXPRESSIONS`, SURPRISE score | casts magic: zaps vine walls, opens doors, pops bubbles |
+| Blink | `BLINKING`, `detected` flag | ducks under snowballs, icicles and falling pots |
+| Straight face | `EXPRESSIONS`, NEUTRAL score (or HAPPY and SURPRISE both low) | tiptoes past sleeping guards |
 
-**A monster with a life of its own.** Left alone, it idles, waddles around its world, stops to sniff the flowers once they've come back, and dozes off (with little z's) if nothing happens for 20 seconds. Its eyes look the way it's walking. The moment you smile or look surprised it stops, turns to look at you and reacts, and it does a happy spin when it grows. On the home screen you can tap it to wake it up. The egg can't walk yet, so it only rocks in place. All of this is plain animation (`src/behaviour.js`), separate from your real signals.
+A big sign at the top of the screen always says which face to make, with a bar showing how long you have. Each level runs the same loop: Momo explains the mission, a challenge appears, you make the face, Momo acts, you get points, and the next challenge comes. At the end there's a boss, then the next level opens.
 
-**No flickering faces.** The live scores jump around, so the monster's face goes through a small mood filter (`src/mood.js`). It smooths the scores, only changes face when an expression has held for about a fifth of a second, keeps each face on screen for at least half a second, and uses separate on and off thresholds so a score hovering at the edge can't make it flicker. Only happy and surprised are mirrored. The SDK also reports sad, angry and others, but they aren't used until they can be checked on real faces. Faces take priority over the monster's own idle animation.
+**It's forgiving.** Each challenge gives about three seconds. Miss it and Momo tumbles over, says something silly ("Oops. I meant to land on my face. Totally on purpose.") and you try again with a bit more time. There is no game over. A face you made a moment before the challenge opened still counts. Stars depend on tumbles: none is 3 stars, up to three is 2, and finishing always gets at least 1.
 
-For judges and developers, a **signal check** panel (turn it on in My world → Settings → "Show the signal check during games") shows which signals are actually arriving (`live`), stopped (`paused`), never seen (`waiting`) or not requested (`off`). If a signal never arrives, the monster simply doesn't use it. Walking, sniffing, napping and the home-screen bounce are animations, not signals.
+**The five levels**
 
-**Easy to pick up.** The home screen shows one goal ("Press PLAY and smile 3 times to hatch the egg"). Before the first game a 3-step **How to play** guide explains it: read the joke, smile for real, your monster grows. In a game a big banner says what to do, and the HUD shows how many smiles until the monster grows.
+| Level | Faces | Boss |
+| --- | --- | --- |
+| 1. Silent Village | smile | **Grumpy Chicken**: bounce on its hay bale three times until it laughs |
+| 2. Crazy Forest | smile, surprise | **Dancing Tree**: copy its smile, surprise, smile, surprise dance |
+| 3. Frozen Mountain | smile, blink | **Ice Penguin**: dodge its snowballs, then melt its frown with a smile |
+| 4. Silly Castle | straight face, blink, surprise | **Giant Grumpy Ghost**: pop its grumpy bubbles with magic |
+| 5. Final Laugh | all four | **Grumpy Shadow**: every face gives back a stolen laugh, until the Shadow laughs too |
 
-**One simple game.** Press PLAY, read the jokes and happy facts, and smile when something makes you happy.
+Each level starts grey and gets its colour back as you clear challenges. The home screen's world brightens as you finish levels, and a level map shows your best stars. You can replay any open level.
 
-**Music and sound.** Original background music is generated live in the app with Web Audio (no audio files): a dreamy track for the story, soft piano and bells at home, an upbeat track for games, and an uplifting one once the world is fully restored. It loops seamlessly, starts only after you interact with the app, crossfades between screens and pauses when the window is hidden. Smiles never restart it. Sound effects cover the egg's wobble, cracking and hatching, smiles, the monster's happy squeak, XP, blooming flowers, level-ups, evolution and chapter completion. **Music** and **Sounds** have separate on/off buttons, plus a volume slider.
+**Momo** is cheeky, a bit clumsy and always on your side. It has poses for running, getting ready, jumping, tumbling, ducking, casting magic, tiptoeing and a victory dance, and its face copies yours through a smoothing filter so it doesn't flicker.
+
+**Voice and music.** Momo reads its lines aloud using the speech voices installed on your computer (only on-device voices, so no text goes online). It says one line at a time, never talks over itself, and the music dips while it speaks. Every line also shows in a speech bubble, so nothing is lost on a computer without voices. Music is generated live in the app: a dreamy story theme, a calm home theme, a bouncy level track, a sneaky boss groove and a victory fanfare. **Music**, **Sounds** and **Voice** each have their own switch, plus a volume slider.
+
+**Opening story.** Four short scenes: the Laughing Kingdom, the Grumpy Shadow stealing the laughs, a mysterious egg, and Momo hatching. It plays once and can be replayed from My world.
+
+## How the face controls work
+
+All four controls come from real SDK data: Expression samples `{ stable, timestamp (µs), scores: [{ type, confidence 0-100 }] }` and blink statuses `{ detected, stable, timestamp }`. Nothing is invented. There's no "big smile" signal in the SDK, so the game doesn't use one.
+
+`src/adventure/controls.js` smooths each score over about 120 ms using the SDK timestamps, then:
+
+| Action | Fires when | Re-arms when | Cooldown |
+| --- | --- | --- | --- |
+| Jump | smoothed HAPPY rises past 55 | HAPPY stays below 35 for 0.3 s | 0.6 s |
+| Magic | smoothed SURPRISE rises past 50 | SURPRISE stays below 25 for 0.3 s | 1 s |
+| Dodge | a new blink starts (`detected` false → true) | the blink ends | 0.5 s |
+| Sneak | a straight face is held for 0.9 s inside the challenge window | any other expression | none |
+
+So holding one expression never repeats an action, and nothing needs a long or uncomfortable hold. Blinks only matter while something is flying at Momo, so normal blinking doesn't do anything odd. If the face leaves the camera, every control relaxes by itself.
+
+**Backup when a signal is missing.** If blink data isn't arriving (some cameras, glasses or lighting), dodging switches to a surprised face and a note on screen says so. The optional signal check panel (My world → Settings → "Show the signal check during games") shows which signals are actually live.
+
+These thresholds are starting points chosen in simulate mode. They haven't been tuned on a real camera yet.
 
 ## Real-world impact
 
-A qualifying smile counts in two separate places:
+Every **qualifying smile** also counts for charity. That's still decided by the original `SmileDetector` (HAPPY ≥ 60% held for 0.5 s, then relaxed before the next one), completely separate from the game controls, so a jump can never be counted twice and gameplay can't change a pledge. Each sponsor pledges an amount per smile (the default example is 10¢), up to a cap they set. Amounts are kept in whole US cents.
 
-- **The game:** happiness energy, XP, evolution and the world coming back.
-- **Charity:** each sponsor's per-smile pledge, up to their cap.
+**Pledged** (promised, worked out from smiles and caps) and **Confirmed donated** (what you record after a sponsor actually gives) are always shown separately. The player never pays anything; sponsors donate to the charity themselves. After the Final Laugh, Momo explains this in its own words.
 
-The home screen has a small **Real-world impact** card: total qualifying smiles, total pledged by sponsors, confirmed donations and progress toward the goal. **Pledged** (promised, worked out from smiles and caps) and **Confirmed donated** (what you record after a sponsor actually donates) are always shown separately. The player never pays anything; sponsors donate to the charity themselves.
+**Sponsor snacks.** A sponsor can add a joke. Momo tells one at the start of a level ("Snack time! Grandma Lee sent you a joke..."), and if it makes you really smile, that sponsor gets the credit.
 
-**Four screens.** **Home** (your monster, one goal and a big PLAY button), **Gameplay**, **Growth** (after each game: a before and after picture when it hatched or grew, plus XP, smiles, the pledge and **Continue**) and **My world** (how much of the world is restored, the five chapters, the charity and the settings). The opening story and the camera consent come once before these.
-
-Everything administrative lives in **My world**: sponsors with rates, caps and their **snack jokes**, confirmed donation amounts, the cause and goal, game length, breathing and pulse options, sound settings, the game history, replaying the story and starting a new monster. A sponsor's snack joke is served in the game as "A snack from Grandma Lee"; if it makes you smile, that sponsor gets the credit.
-
-**Smile Receipt.** After a game, save a PNG with the monster, its name and level, the qualifying smiles, each sponsor's pledge for the game, the campaign's pledged and confirmed totals, and the charity. It says plainly that pledged means promised, not paid, and it contains no camera image. A CSV pledge statement can be exported from settings.
+**Smile Receipt.** After a level, save a PNG with Momo, the level and stars, the qualifying smiles, each sponsor's pledge, the campaign's pledged and confirmed totals, and the charity. It never contains a camera image. A CSV pledge statement can be exported from My world.
 
 ## How it works
 
@@ -78,21 +85,17 @@ Everything administrative lives in **My world**: sponsors with rates, caps and t
 camera ──► SmartSpectra SDK (renderer captures frames, main process analyses them on-device)
                 │  'metrics' event (protobuf) → decodeMetrics(buf)
                 ▼
-   face.expression[] ──► SmileDetector ──► +1 qualifying smile ──► pledges.js (caps)
-          │                                    │
-          │                                    └─► HumourModel.creditSmile() ──► monster diet ──► traits
-          ├─► MoodMirror (smoothed face) ─────┐   Wanderer (walk / sniff / nap)
-   face.blinking[]  ──► BlinkTracker          ├─► monsterSvg() redrawn once per frame
-   face.talking[]   ──► talkingNow()          │
-   breathing trace  ──► BreathNormalizer     ─┘
-   all of the above ──► SignalMonitor ──► signal check chips (optional)
-
-   qualifying smiles ──► xpFor() (10 XP each) ──► stageFor() level ──► worldTier() ──► worldSvg()
+   face.expression[] ──► ExpressionControls ──► jump / magic / sneak ─┐
+                    └──► SmileDetector ──► qualifying smile ──► pledges.js (caps, USD cents)
+   face.blinking[]  ──► ExpressionControls ──► dodge ─────────────────┤
+                                                                       ▼
+                                            AdventureLevel (intro → challenges → boss → outro)
+                                                                       │
+                                     scenes.js + Momo SVG + MomoVoice + music ◄┘
+   all signals ──► SignalMonitor ──► signal check chips, and the blink → surprise backup
 ```
 
-`SmileDetector` uses hysteresis: HAPPY ≥ 60% held for 0.5 s counts one smile, then HAPPY must drop below 35% for 0.7 s before the next can count. One long grin counts once and a flicker doesn't count. We don't claim to tell real from fake smiles beyond that.
-
-The SDK integration is in [`renderer.js`](renderer.js) (`buildSdk`, `wireSdk`, `handleMetrics`) and [`main.js`](main.js) (`bindSmartSpectraIpc`). The app requests `faceMetrics` (landmarks, blinking, talking, expressions), adds `breathingMetrics` when "Monster breathes with you" is on, and `cardioMetrics` when pulse is on.
+The SDK integration is in [`renderer.js`](renderer.js) (`buildSdk`, `wireSdk`, `handleMetrics`) and [`main.js`](main.js) (`bindSmartSpectraIpc`). The app requests `faceMetrics` (landmarks, blinking, talking, expressions), adds `breathingMetrics` when "Momo breathes with you" is on, and `cardioMetrics` when pulse is on.
 
 ## Setup
 
@@ -112,25 +115,24 @@ The key is read at build time from `.env` (or the `SMARTSPECTRA_API_KEY` environ
 
 ### Testing guide for judges
 
-1. `npm start`. The opening story plays first. Click **Continue** through the four scenes (or **Skip story**), then **LET'S BEGIN!**. Music starts after your first click.
-2. The camera consent screen comes next. Tick the agreement and press **Meet my monster**. (The diagnostics box is optional and off by default.) The camera has not been touched yet.
-3. The home screen shows the Mysterious Egg in its grey world, the happiness bar and the Real-world impact card. Open **My world** to see the five chapters and how much of the world is restored. Try the **Music**, **Sounds** and volume controls at the top.
-4. Press **PLAY**. Before your first game a 3-step **How to play** guide appears (you can open it again from the home screen). Only after that does the SDK open the camera (the OS may ask for permission). The hint on the preview tells you when it's running and how to sit.
-5. To see which SmartSpectra signals your key and setup are really delivering, turn on **My world → Settings → Show the signal check during games** before you play. It's off by default so normal players don't see technical details.
-6. Smile at the cards. Each counted smile pops "+10 XP" and the sponsors' pledge. Your first smile makes the egg glow and brings back the first lights. Each smile adds a crack, and the third one hatches the egg into a Baby Monster. Blink, talk, look surprised and breathe, and watch the monster copy you.
-7. Smile at a "Sponsor snack" card to see that sponsor get the credit.
-8. Press **End game**. The camera turns off and the Growth screen shows the egg turning into the baby monster (if it hatched), XP, smiles, sponsor pledges and the charity. Press **Save Smile Receipt**.
-9. Open **My world**, type an amount in **Donated ($)** for a sponsor and go back: Pledged and Confirmed donated update separately. Try **Export pledge statement (CSV)** and **Replay the story**.
-10. Open **Privacy & data** and press **Delete all my data** to see the wipe (it starts again from the story).
+1. `npm start`. The opening story plays first. Click **Continue** through the four scenes (or **Skip story**). Music starts after your first click.
+2. The camera consent screen comes next. Tick the agreement and press **Meet Momo**. (The diagnostics box is optional and off by default.) The camera has not been touched yet.
+3. The home screen shows Momo, the level map and the Real-world impact card. Optional: turn on **My world → Settings → Show the signal check during games** to see which SDK signals really arrive.
+4. Press **PLAY**. A short **How to play** guide appears the first time, then the SDK opens the camera (the OS may ask for permission).
+5. Level 1, Silent Village: smile when the sign says "Smile to jump!". Hold still and let a window run out once to see Momo tumble and retry. A real smile while the sponsor's joke is up credits that sponsor.
+6. Beat the Grumpy Chicken. The results screen shows stars, points, qualifying smiles and each sponsor's pledge. Press **Save Smile Receipt**.
+7. Back home, Level 2 is open. In Crazy Forest, look surprised to zap the vines. In Frozen Mountain, blink to duck. In Silly Castle, keep a straight face to sneak.
+8. Open **My world**, type an amount in **Donated ($)** for a sponsor: Pledged and Confirmed donated update separately. Try **Export pledge statement (CSV)**.
+9. Open **Privacy & data** and press **Delete all my data** to see the wipe.
 
-Breathing needs your chest in view (sit back a little). Pulse needs an API key provisioned for cardio metrics; leave it off if yours isn't.
+To try every level without playing through, use `npm run simulate`: Space = smile, W = surprise, B = blink, no key = straight face.
 
 ### Other commands
 
 | Command | What it does |
 | --- | --- |
-| `npm test` | Unit tests: smile detector, pledges and confirmed donations, monster levels, XP and traits, world restoration, music loops, signal tracking, humour model, the egg, face smoothing, the monster's behaviour, moving saves from earlier versions safely |
-| `npm run simulate` | Launches the UI with a **fake** signal for UI work (Space = smile, G = big grin, W = surprise, B = blink, T = talk, breathing is a sine wave). A yellow banner says so on every screen. The real build never uses it |
+| `npm test` | Unit tests: face controls (edges, re-arming, cooldowns, blink backup), level flow, retries, stars and unlocks, all five levels, Momo's voice queue, music loops, smile detector, pledges and confirmed donations, saves from earlier versions |
+| `npm run simulate` | Launches the UI with a **fake** signal for UI work (Space = smile, W = surprise, B = blink, no key = straight face, T = talk, breathing is a sine wave). A yellow banner says so on every screen. The real build never uses it |
 | `npm run dist:mac` / `dist:win` / `dist:linux` | Packaged installers via electron-builder |
 
 ### Troubleshooting
@@ -146,49 +148,53 @@ Breathing needs your chest in view (sit back a little). Pulse needs an API key p
 
 ## Consent and Data Handling
 
-**Camera consent.** After the opening story (which never uses the camera), the app shows a consent screen that explains the points below and requires the user to tick an agreement before anything else is available. The camera is never opened during the story, on the consent screen or on the home screen. It is opened by the SDK only when the user presses PLAY (after the How to play guide the first time), and released when the game ends, the timer runs out, the user deletes their data, or the window closes. A "Live, not recorded" badge is shown while it's on, alongside the OS camera indicator. The Electron main process grants only video (never the microphone) and only to the app's own bundled page. Talking detection comes from the video, not from audio. The consent text asks users to count only their own smiles or those of people who knowingly agreed to take part; the app must not be used for covert monitoring.
+**Camera consent.** After the opening story (which never uses the camera), the app shows a consent screen that explains the points below and requires the user to tick an agreement before anything else is available. The camera is never opened during the story, on the consent screen or on the home screen. It is opened by the SDK only when the user presses PLAY (after the How to play guide the first time), and released when the game ends, the user deletes their data, or the window closes. A "Live, not recorded" badge is shown while it's on, alongside the OS camera indicator. The Electron main process grants only video (never the microphone) and only to the app's own bundled page. Talking detection comes from the video, not from audio. The consent text asks users to count only their own smiles or those of people who knowingly agreed to take part; the app must not be used for covert monitoring.
 
-**What is processed.** Camera frames go from the renderer to the SmartSpectra SDK running inside the app's main process, are analysed on the device, and are discarded. Smile Monster reads expression scores, blink and talking flags, the breathing trace (if "Monster breathes with you" is on) and pulse (if turned on). It uses them in memory to animate the monster, update the meter and count smiles, then drops them.
+**What is processed.** Camera frames go from the renderer to the SmartSpectra SDK running inside the app's main process, are analysed on the device, and are discarded. Smile Monster reads expression scores, blink and talking flags, the breathing trace (if "Momo breathes with you" is on) and pulse (if turned on). It uses them in memory to control and animate Momo, update the meter and count smiles, then drops them.
 
-**What is stored.** One record in the app's local storage on this device (`smilemonster.v1`; a save from an earlier version of the app is moved to this name the first time it opens, and the old copy is removed only after the move worked): whether the opening story has been seen; the consent version and time; settings (game length, breathing mirror, pulse, music, sound effects, volume, diagnostics); the cause and goal; sponsor names, rates, caps, colours, snack jokes, snack-smile counts and the confirmed donation amounts the user typed; the monster (qualifying smiles, from which XP and level are worked out; smiles per joke category; surprise-moment count; snack smiles per sponsor); names of retired monsters; and per-game totals (end time, duration, number of smiles, pledged amount).
+**What is stored.** One record in the app's local storage on this device (`smilemonster.v1`; a save from an earlier version of the app is moved to this name the first time it opens, and the old copy is removed only after the move worked): whether the opening story has been seen; the consent version and time; settings (breathing mirror, pulse, music, sound effects, voice, volume, diagnostics); the cause and goal; sponsor names, rates, caps, colours, snack jokes, snack-smile counts and the confirmed donation amounts the user typed; adventure progress (levels unlocked, best stars and points per level); a smile total and snack smiles per sponsor (plus counts kept from the earlier version of the app); and per-game totals (end time, duration, number of smiles, pledged amount).
 
-**What is never stored or sent by Smile Monster.** Video, images, screenshots, face landmarks, expression scores, blink, talking or breathing data, pulse values, or any other biometric data. The blink count on the Growth screen is a number for that screen only. The in-game humour model and the mood filter are discarded when the game ends.
+**What is never stored or sent by Smile Monster.** Video, images, screenshots, face landmarks, expression scores, blink, talking or breathing data, pulse values, or any other biometric data. The blink count on the results screen is a number for that screen only. The face controls and the mood filter are discarded when the game ends.
 
-**Smile Receipt and CSV.** Both are generated on the device only when the user clicks to save or export. The receipt has the monster drawing, totals, sponsor names and amounts, and the charity, never a camera image. The CSV has the cause, sponsor names, rates, caps, pledged and confirmed amounts, snack smile counts, and session dates and smile counts. They leave the device only if the user sends them to someone.
+**Smile Receipt and CSV.** Both are generated on the device only when the user clicks to save or export. The receipt has the Momo drawing, totals, sponsor names and amounts, and the charity, never a camera image. The CSV has the cause, sponsor names, rates, caps, pledged and confirmed amounts, snack smile counts, and session dates and smile counts. They leave the device only if the user sends them to someone.
 
 **Sharing.** None. Smile Monster has no backend, no account, no analytics and no ads. The music, sounds and artwork are generated inside the app, so nothing is downloaded for them.
 
-**Retention and deletion.** Local data is kept until the user deletes it. **Privacy & data → Delete all my data** erases the whole record, including consent, and starts over from the story. **Don't save this game** on the Growth screen removes that game and undoes what it fed the monster. **Start a new monster** resets the monster but keeps pledges. Uninstalling the app (and clearing its app-data folder) also removes everything.
+**Retention and deletion.** Local data is kept until the user deletes it. **Privacy & data → Delete all my data** erases the whole record, including consent, and starts over from the story. **Don't save this game** on the results screen removes that game, including its stars and unlocks. **Start the adventure again** resets level progress but keeps pledges. Uninstalling the app (and clearing its app-data folder) also removes everything.
 
 **SDK network use and telemetry.** The SmartSpectra SDK connects to Presage over TLS to validate the API key and meter usage. It can also send an aggregate, per-session diagnostic summary (SDK version, OS/device model, frame-rate and quality counters, error codes) that by Presage's documentation contains no video, no measured values and no user or device identifiers ([SDK Telemetry & Privacy](https://github.com/Presage-Security/SmartSpectra/blob/main/docs/telemetry-and-privacy.md)). The SDK turns this on by default; **Smile Monster turns it off** (`enableTelemetry: false`) unless the user opts in on the consent screen or in Privacy & data. See [Presage's Privacy Policy](https://api.physiology.presagetech.com/privacypolicy).
 
-**AI services.** None. The "learns your humour" feature is a small counting model in the app, not an AI service. The SDK's optional LLM Insights feature is not used.
+**Momo's voice.** Spoken by the speech voices installed on the computer, and only voices marked as on-device are used, so Momo's lines are never sent to an online speech service. It can be switched off.
+
+**AI services.** None. The SDK's optional LLM Insights feature is not used.
 
 **Payments.** None. The player never pays anything. Smile Monster records pledges and the donations the user marks as confirmed. Sponsors donate to the charity directly.
 
 ## Project structure
 
 ```
-main.js                 Electron main: window, SmartSpectra IPC bridge, camera-only permission
-renderer.js             Screens (story, consent, home, gameplay, growth, my world), SmartSpectra wiring, live mirroring
-src/monster.js          Five levels, the egg, XP, traits from the joke diet, names, the monster SVG
-src/mood.js             Smooths live expression scores into a calm face (no flicker), wink, extra happy
-src/behaviour.js        The monster's own life: idle, walk, sniff flowers, nap, celebrate
-src/world.js            The world SVG, from grey (tier 0) to fully restored (tier 5)
-src/music.js            Original looping background music (Web Audio scheduler)
-src/audio.js            Shared audio context with separate music and sound-effect buses
-src/signals.js          Signal monitor, blink edges, talking flag, breathing normaliser
-src/smile-detector.js   Expression stream → qualifying smiles (hysteresis)
-src/pledges.js          Sponsor caps, session pledge, confirmed donations, CSV statement
-src/store.js            The single local record, migration of older saves, wipe
-src/joy-reel.js         Built-in cards, grouped by kind
-src/humour.js           Learns which kind of card makes you smile (in memory only)
-src/monster-voice.js    What the monster says, and when
-src/sounds.js           Sound effects (no files)
-src/receipt.js          Draws the Smile Receipt PNG
-src/simulator.js        UI-only fake signal for `npm run simulate`
-test/                   node:test unit tests
+main.js                     Electron main: window, SmartSpectra IPC bridge, camera-only permission
+renderer.js                 Screens (story, consent, home, level, results, my world), SmartSpectra wiring
+src/adventure/controls.js   Real SDK scores and blink flags → jump, magic, dodge, sneak (edges, re-arm, cooldowns)
+src/adventure/engine.js     Plays one level: intro, challenges, retries, boss, outro, stars
+src/adventure/levels.js     The five levels and bosses as data; saved progress
+src/adventure/scenes.js     Level backgrounds, obstacles and bosses (SVG)
+src/adventure/voice.js      Momo's spoken lines: one at a time, music dips, on-device voices only
+src/adventure/lines.js      Momo's oops and ready lines
+src/monster.js              The Momo drawing (and the egg used in the story)
+src/mood.js                 Smooths live expression scores into a calm face for Momo
+src/smile-detector.js       Expression stream → qualifying smiles for charity (hysteresis)
+src/pledges.js              Sponsor caps, pledges in USD cents, confirmed donations, CSV statement
+src/store.js                The single local record, migration of older saves, wipe
+src/signals.js              Signal monitor, blink edges, talking flag, breathing normaliser
+src/music.js, audio.js      Original looping music and the music / sound-effect buses
+src/sounds.js               Sound effects (no files)
+src/receipt.js              Draws the Smile Receipt PNG
+src/simulator.js            UI-only fake signal for `npm run simulate`
+test/                       node:test unit tests
 ```
+
+Some modules from the earlier joke-card version (`joy-reel.js`, `humour.js`, `behaviour.js`, `monster-voice.js`) are still in the repo; the home screen still uses `behaviour.js` to let Momo wander.
 
 ## License
 

@@ -69,9 +69,21 @@ export function bus(kind) {
 /** The music bus itself (the music player fades its own tracks into it). */
 export function musicNode() { return musicBus; }
 
+let held = false;
+/** Keep the music lowered while Momo is talking (true), and bring it back afterwards (false). */
+export function holdDuck(on, to = 0.3) {
+  held = !!on;
+  if (!ctx || !prefs.music) return;
+  const t = ctx.currentTime;
+  const g = musicBus.gain;
+  g.cancelScheduledValues(t);
+  g.setValueAtTime(g.value, t);
+  g.linearRampToValueAtTime(held ? 0.55 * to : 0.55, t + (held ? 0.15 : 0.6));
+}
+
 /** Briefly lower the music, e.g. under an evolution fanfare. */
 export function duckMusic(seconds = 2.2, to = 0.15) {
-  if (!ctx || !prefs.music) return;
+  if (!ctx || !prefs.music || held) return;
   const t = ctx.currentTime;
   const g = musicBus.gain;
   g.cancelScheduledValues(t);
