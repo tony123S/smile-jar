@@ -136,6 +136,12 @@ export class ExpressionControls {
     return this.calmSince != null && now - this.calmSince >= this.o.sneakHoldMs && now - this.lastSampleAt <= this.o.lostMs;
   }
 
+  /** How long a straight face has been held right now, in ms (0 if not calm or no face). */
+  calmFor(now) {
+    if (this.calmSince == null || now - this.lastSampleAt > this.o.lostMs) return 0;
+    return now - this.calmSince;
+  }
+
   /** 0..1, how close the straight face is to counting (for a little meter). */
   sneakProgress(now) {
     if (this.calmSince == null) return 0;

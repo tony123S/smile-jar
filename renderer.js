@@ -431,13 +431,30 @@ function renderHome() {
   $('home-xp').textContent = barText(look, m);
   markBar('home-stage-fill', look);
   $('home-next').textContent = nextLine(look.stage);
-  $('home-goal-line').textContent = look.stage.key === 'egg'
-    ? `\u{1F95A} Press PLAY and smile ${plural(look.stage.toNext, 'time', 'times')} to hatch the egg`
-    : look.stage.next
-    ? `\u{1F60A} Press PLAY and smile ${plural(look.stage.toNext, 'time', 'times')} to finish Chapter ${look.stage.level}`
-    : '\u{1F308} You restored the whole world! Keep playing to raise more for charity.';
+  const next = currentLevel();
+  const allDone = LEVELS.every((l) => state.adventure.best[l.id]);
+  $('home-goal-line').textContent = allDone
+    ? '\u{1F308} Every laugh is back in the Laughing Kingdom! Replay any level to raise more for charity.'
+    : `\u{1F60A} Next: Level ${next.n}, ${next.name}`;
+  renderLevelMap();
   renderImpact();
 }
+
+function renderLevelMap() {
+  $('level-map').innerHTML = LEVELS.map((l) => {
+    const open = isPlayable(l) && l.n <= state.adventure.unlocked;
+    const best = state.adventure.best[l.id];
+    const stars = best ? '\u2605'.repeat(best.stars) + '\u2606'.repeat(3 - best.stars) : open ? 'New!' : '\u{1F512}';
+    return `<button type="button" class="level-chip${open ? '' : ' locked'}" data-level="${l.id}" ${open ? '' : 'disabled'} style="--lc:${l.colour}" title="${esc(open ? l.mission : `Finish Level ${l.n - 1} to open`)}">
+      <span class="lc-n">${l.n}</span><span class="lc-name">${esc(l.name)}</span><span class="lc-stars">${stars}</span></button>`;
+  }).join('');
+}
+$('level-map').addEventListener('click', (e) => {
+  const b = e.target.closest('.level-chip');
+  if (!b || b.disabled) return;
+  playLevelId = b.dataset.level;
+  if (!state.settings.howToSeen) openHowTo(true); else startSession(playLevelId);
+});
 
 // ---------------------------------------------------------------- charity & settings
 function renderCampaign() {
@@ -1110,9 +1127,9 @@ function onAdvEvent(e, now) {
       p.hidden = false;
       p.classList.toggle('retry', !!e.retry);
       p.classList.remove('say-in'); void p.offsetWidth; p.classList.add('say-in');
-      if (!e.step.boss) {
+      if (!e.step.boss || e.step.need === 'dodge') {
         thing.innerHTML = thingSvg(e.step.thing);
-        thing.classList.remove('gone');
+        thing.className = `adv-thing need-${e.step.need}`;
         thing.style.left = '95%';
         thing.hidden = false;
       }
@@ -1121,17 +1138,20 @@ function onAdvEvent(e, now) {
     }
     case 'success': {
       $('adv-prompt').hidden = true;
+      if (e.step.need === 'magic') sfx.wow();
+      if (!thing.hidden) {
+        // jump: it slides under Momo; magic: it gets zapped; dodge: it flies over; sneak: Momo tiptoes past
+        const how = { jump: 'gone', magic: 'zapped', dodge: 'flown', sneak: 'passed' }[e.step.need] || 'gone';
+        thing.classList.add(how);
+        thing.style.left = how === 'flown' || how === 'passed' ? '-12%' : how === 'gone' ? '24%' : thing.style.left;
+      }
       if (e.step.boss) {
         a.bossHits += 1;
         const boss = $('adv-boss');
         boss.innerHTML = bossSvg(a.level.boss.thing, a.bossHits / a.bossTotal);
         boss.classList.remove('hit'); void boss.offsetWidth; boss.classList.add('hit');
         sfx.golden();
-      } else {
-        thing.classList.add('gone');
-        thing.style.left = '24%';
-        if (e.step.need === 'magic') sfx.wow(); else sfx.happy();
-      }
+      } else if (e.step.need !== 'magic') sfx.happy();
       sfx.xp();
       popAt(`+${e.points}`, e.firstTry ? 'xp gold' : 'xp', -20, 0, 'adv-momo');
       setTimeout(() => sfx.bloom(), 380); // a little colour comes back to the village
@@ -1139,7 +1159,8 @@ function onAdvEvent(e, now) {
     }
     case 'oops':
       $('adv-prompt').hidden = true;
-      thing.classList.add('gone');
+      if (e.step.need === 'sneak') thing.classList.add('awake'); // the guard wakes up: "!"
+      setTimeout(() => thing.classList.add('gone'), e.step.need === 'sneak' ? 900 : 0);
       sfx.crack();
       break;
     case 'boss': {
@@ -1188,7 +1209,7 @@ function advFrame() {
   // If the SDK isn't sending blinks (after a few seconds of face data), dodging uses a surprised face.
   const blinkLive = st.blinking.live || !st.expressions.live || now - s.startedAt < 6000;
   const scheme = controlScheme({ blinkLive });
-  const input = { actions: a.pending.splice(0), sneaking: a.controls.sneaking(now), scheme };
+  const input = { actions: a.pending.splice(0), calmMs: a.controls.calmFor(now), scheme };
   for (const e of a.game.tick(now, input)) onAdvEvent(e, now);
 
   const v = a.game.view(now);
@@ -1199,13 +1220,13 @@ function advFrame() {
   const inWindow = v.phase === 'challenge';
   if (inWindow) {
     $('adv-window-fill').style.width = `${Math.round((1 - v.t) * 100)}%`;
-    if (!v.boss) $('adv-thing').style.left = `${(95 - v.t * 62).toFixed(1)}%`;
+    if (!$('adv-thing').hidden) $('adv-thing').style.left = `${(95 - v.t * 62).toFixed(1)}%`;
   }
   const sneak = inWindow && v.step?.need === 'sneak';
   $('adv-sneak').hidden = !sneak;
-  if (sneak) $('adv-sneak-fill').style.width = `${Math.round(a.controls.sneakProgress(now) * 100)}%`;
+  if (sneak) $('adv-sneak-fill').style.width = `${Math.round(a.game.sneakProgress(now, a.controls.calmFor(now)) * 100)}%`;
   $('adv-backup').hidden = !(inWindow && v.step?.need === 'dodge' && !blinkLive);
-  if (v.phase === 'run' || v.phase === 'intro') $('adv-thing').hidden = true;
+  if (v.phase === 'run' || v.phase === 'intro' || v.phase === 'bossIntro') $('adv-thing').hidden = true;
   a.raf = requestAnimationFrame(advFrame);
 }
 
@@ -1232,12 +1253,14 @@ function startAdventure(level, now) {
 }
 $('btn-adv-next').addEventListener('click', () => endSession());
 
-async function startSession() {
+let playLevelId = null; // a level picked on the level map; PLAY uses the next open level
+async function startSession(levelId = playLevelId) {
+  playLevelId = null;
   if (!store.hasConsent(state)) { renderConsent(); show('consent'); return; }
   showError('');
   detector = new SmileDetector();
   const now = Date.now();
-  const level = currentLevel();
+  const level = levelById(levelId) || currentLevel();
   session = {
     startedAt: now,
     adv: null,

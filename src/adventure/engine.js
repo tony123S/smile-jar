@@ -25,7 +25,8 @@ export const ENGINE = Object.freeze({
   oopsMs: 1600,        // the tumble and getting back up
   bossIntroMs: 3600,
   outroMs: 4200,
-  earlyMs: 500,        // a face made just before the window opens still counts
+  earlyMs: 500,
+  sneakHoldMs: 900,    // the straight face has to be held this long inside the window        // a face made just before the window opens still counts
   points: { step: 100, firstTry: 50, boss: 200 },
 });
 
@@ -101,8 +102,10 @@ export class AdventureLevel {
   }
 
   /** Did the input do what this step needs? */
-  satisfied(step, { actions = [], sneaking = false }, scheme) {
-    if (step.need === 'sneak') return !!sneaking;
+  satisfied(step, { actions = [], calmMs = 0 }, scheme) {
+    // Sneaking counts only once the straight face has been held inside this window, so a face
+    // that was already calm when the guard appeared still has to hold it for a moment.
+    if (step.need === 'sneak') return this.sneakProgress(this.lastNow, calmMs) >= 1;
     const want = scheme[step.need];
     if (actions.includes(want)) return true;
     const early = this.recent[want];
@@ -112,6 +115,7 @@ export class AdventureLevel {
 
   tick(now, input = {}) {
     const scheme = input.scheme || controlScheme();
+    this.lastNow = now;
     for (const a of input.actions || []) this.recent[a] = now;
     // A challenge can be won on this very tick, before any timeout is looked at.
     this.trySucceed(now, input, scheme);
@@ -173,6 +177,12 @@ export class AdventureLevel {
     this.say(step.win);
     this.recent = {};
     return true;
+  }
+
+  /** 0..1 of the straight face needed for a sneak step, counted from when its window opened. */
+  sneakProgress(now, calmMs = 0) {
+    if (this.phase !== 'challenge') return 0;
+    return Math.min(1, Math.min(calmMs, now - this.phaseAt) / this.o.sneakHoldMs);
   }
 
   /** 3 stars for no misses, 2 for a few, and always at least 1 for finishing. */

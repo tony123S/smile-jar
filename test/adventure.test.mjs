@@ -107,7 +107,7 @@ function playLevel(level, { lazy = () => false, step = 50, until = 120000 } = {}
     const v = g.view(t);
     const input = {};
     if (g.phase === 'challenge' && !lazy(v, t)) {
-      if (v.step.need === 'sneak') input.sneaking = true;
+      if (v.step.need === 'sneak') input.calmMs = 60000;
       else input.actions = [controlScheme()[v.step.need]];
     }
     events.push(...g.tick(t, input));
@@ -175,7 +175,10 @@ test('a wrong face does not count, and sneaking needs the straight face', () => 
   while (g.phase !== 'challenge') g.tick((t += 50));
   g.tick((t += 50), { actions: ['jump'] });
   assert.equal(g.phase, 'challenge');
-  g.tick((t += 50), { sneaking: true });
+  const opened = g.phaseAt;
+  g.tick((t = opened + 300), { calmMs: 5000 });
+  assert.equal(g.phase, 'challenge', 'calm from before the guard appeared still has to be held in the window');
+  g.tick((t = opened + ENGINE.sneakHoldMs + 10), { calmMs: 5000 });
   assert.equal(g.phase, 'success');
   while (g.phase !== 'challenge') g.tick((t += 50));
   assert.ok(g.step.boss);
@@ -195,4 +198,39 @@ test('finishing a level opens the next and keeps the best result', () => {
   assert.equal(p.unlocked, 5, 'never past the last level');
   assert.deepEqual(normalizeProgress({ unlocked: 99, best: { village: { stars: 7 } } }), { unlocked: 5, best: { village: { stars: 3, score: 0 } } });
   assert.deepEqual(normalizeProgress(null), emptyProgress());
+});
+
+test('all five levels are playable, each with its boss, and can be finished', () => {
+  const bosses = ['Grumpy Chicken', 'Dancing Tree', 'Ice Penguin', 'Giant Grumpy Ghost', 'Grumpy Shadow'];
+  LEVELS.forEach((l, i) => {
+    assert.ok(isPlayable(l), `${l.name} is playable`);
+    assert.equal(l.boss.name, bosses[i]);
+    const { g } = playLevel(l);
+    assert.ok(g.done, `${l.name} finishes`);
+    assert.equal(g.summary().stars, 3);
+  });
+});
+
+test('each level only asks for the faces it teaches, and the finale uses all four', () => {
+  for (const l of LEVELS) {
+    const needs = new Set([...l.steps, ...l.boss.steps].map((s) => s.need));
+    for (const n of needs) assert.ok(l.teaches.includes(n), `${l.name} asks for ${n}`);
+  }
+  const finale = new Set([...LEVELS[4].steps, ...LEVELS[4].boss.steps].map((s) => s.need));
+  assert.deepEqual([...finale].sort(), ['dodge', 'jump', 'magic', 'sneak']);
+  assert.ok(LEVELS.slice(0, 3).every((l) => !l.teaches.includes('sneak')), 'sneaking waits for the castle');
+});
+
+test('dodging still works without blinks, using a surprised face', () => {
+  const g = new AdventureLevel(LEVELS[2], { now: 0, rand: () => 0 });
+  const scheme = controlScheme({ blinkLive: false });
+  let t = 0;
+  while (!(g.phase === 'challenge' && g.step.need === 'dodge')) {
+    const input = g.phase === 'challenge' ? { actions: [scheme[g.step.need]], scheme } : { scheme };
+    g.tick((t += 50), input);
+  }
+  g.tick((t += 50), { actions: ['dodge'], scheme });
+  assert.equal(g.phase, 'challenge', 'a blink is not what this scheme asks for');
+  g.tick((t += 50), { actions: ['magic'], scheme });
+  assert.equal(g.phase, 'success');
 });
