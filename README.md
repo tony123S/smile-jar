@@ -34,15 +34,17 @@ Each level-up plays an evolution animation, a fanfare that's different for every
 
 | You | SDK signal | The monster |
 | --- | --- | --- |
-| Smile | `EXPRESSIONS` (HAPPY score) | grins, waves its arms and earns energy when the smile counts |
-| Look surprised | `EXPRESSIONS` (SURPRISE score) | opens its eyes and mouth wide |
-| Blink | `BLINKING` (`detected` flag) | blinks back |
+| Smile | `EXPRESSIONS` (HAPPY score) | grins and waves its arms (the egg glows and wiggles), and earns energy when the smile counts. Keep smiling for 3 seconds and it gets extra happy, with hearts. When you stop, it eases back to calm through a soft smile |
+| Look surprised | `EXPRESSIONS` (SURPRISE score) | opens its eyes and mouth wide and does a little jump |
+| Blink | `BLINKING` (`detected` flag) | blinks back, and every fifth blink it winks instead |
 | Talk | `TALKING` (`detected` flag) | moves its mouth along with you |
 | Breathe | breathing bundle (chest trace, optional) | its body rises and falls with yours |
 
+**No flickering faces.** The live scores jump around, so the monster's face goes through a small mood filter (`src/mood.js`). It smooths the scores, only changes face when an expression has held for about a fifth of a second, keeps each face on screen for at least half a second, and uses separate on and off thresholds so a score hovering at the edge can't make it flicker. Only happy and surprised are mirrored. The SDK also reports sad, angry and others, but they aren't used until they can be checked on real faces. Faces take priority over the monster's own idle animation.
+
 A **Live signals** panel shows which signals are actually arriving (`live`), stopped (`paused`), never seen (`waiting`) or not requested (`off`). If a signal never arrives, the monster simply doesn't use it. On the home screen the monster has its own idle bounce and blink; those are animations, not signals.
 
-**Easy to pick up.** The home screen shows one goal ("Press PLAY and smile 3 times to finish Chapter 1"). Before the first game a 3-step **How to play** guide explains it: read the joke, smile for real, your monster grows. In a game a big banner says what to do, and the HUD shows how many smiles until the monster grows.
+**Easy to pick up.** The home screen shows one goal ("Press PLAY and smile 3 times to hatch the egg"). Before the first game a 3-step **How to play** guide explains it: read the joke, smile for real, your monster grows. In a game a big banner says what to do, and the HUD shows how many smiles until the monster grows.
 
 **One simple game.** Press PLAY, read the jokes and happy facts, and smile when something makes you happy.
 

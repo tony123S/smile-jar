@@ -141,16 +141,18 @@ function heart(x, y, s, fill, stroke = INK) {
 /** The facial expression to draw: live signals win, otherwise the level's personality. */
 export function faceFor(stageKey, live = {}) {
   if (live.face === 'wow') return 'wow';
+  if (live.face === 'extra') return 'extra';
   if (live.face === 'grin') return 'grin';
   if (live.talking) return live.talkOpen ? 'talk-open' : 'talk';
+  if (live.face === 'soft') return 'happy'; // easing back to calm after a smile
   return STAGES.find((s) => s.key === stageKey)?.mood || 'happy';
 }
 
-function eyes({ cx, cy, gap, rx, ry, expr, closed, body }) {
+function eyes({ cx, cy, gap, rx, ry, expr, closed, wink }) {
   if (expr === 'sleepy' && !closed) {
     return `<g class="m-eyes">${[-gap, gap].map((dx) => `<path d="M${f1(cx + dx - rx)} ${f1(cy - 1)} q${f1(rx)} ${f1(ry * 0.9)} ${f1(rx * 2)} 0" fill="none" stroke="${INK}" stroke-width="3.4" stroke-linecap="round"/>`).join('')}</g>`;
   }
-  if (closed || expr === 'proud') {
+  if (closed || expr === 'proud' || expr === 'extra') {
     // happy closed eyes: little upside-down arcs
     return `<g class="m-eyes">${[-gap, gap].map((dx) => `<path d="M${f1(cx + dx - rx)} ${f1(cy + 2)} q${f1(rx)} ${f1(-ry * 1.1)} ${f1(rx * 2)} 0" fill="none" stroke="${INK}" stroke-width="3.4" stroke-linecap="round"/>`).join('')}</g>`;
   }
@@ -159,6 +161,11 @@ function eyes({ cx, cy, gap, rx, ry, expr, closed, body }) {
   let out = '';
   for (const dx of [-gap, gap]) {
     const x = cx + dx;
+    if (wink && dx > 0) {
+      // a wink back: the right eye closes in a happy arc
+      out += `<path d="M${f1(x - rx)} ${f1(cy + 2)} q${f1(rx)} ${f1(-ry * 1.1)} ${f1(rx * 2)} 0" fill="none" stroke="${INK}" stroke-width="3.4" stroke-linecap="round"/>`;
+      continue;
+    }
     out += `<ellipse cx="${f1(x)}" cy="${f1(cy)}" rx="${f1(erx)}" ry="${f1(ery)}" fill="${INK}"/>`;
     out += `<ellipse cx="${f1(x - erx * 0.32)}" cy="${f1(cy - ery * 0.38)}" rx="${f1(erx * 0.36)}" ry="${f1(ery * 0.32)}" fill="#fff"/>`;
     out += `<circle cx="${f1(x + erx * 0.35)}" cy="${f1(cy + ery * 0.35)}" r="${f1(Math.max(1.5, erx * 0.16))}" fill="#fff" opacity="0.9"/>`;
@@ -169,6 +176,8 @@ function eyes({ cx, cy, gap, rx, ry, expr, closed, body }) {
 function mouth({ cx, cy, expr, s }) {
   const w = 7 * s;
   switch (expr) {
+    case 'extra':
+      return mouth({ cx, cy, expr: 'grin', s: s * 1.2 });
     case 'grin':
       return `<path d="M${f1(cx - w * 1.6)} ${f1(cy - 1)} q${f1(w * 1.6)} ${f1(w * 2.6)} ${f1(w * 3.2)} 0 z" fill="${INK}"/><path d="M${f1(cx - w * 0.8)} ${f1(cy + w * 1.05)} q${f1(w * 0.8)} ${f1(w * 0.6)} ${f1(w * 1.6)} 0" fill="#ff8aa6"/>`;
     case 'wow':
@@ -204,7 +213,7 @@ const CRACKS = [
  *  cracked open a little, two eyes peek out and blink with you. */
 function eggSvg({ traits, live, egg, uid, expr, sy }) {
   const spot = traits.body || DEFAULT_BODY;
-  const glee = live.face === 'grin';
+  const glee = live.face === 'grin' || live.face === 'extra';
   const cracks = egg?.cracks || 0;
   let back = `<ellipse cx="120" cy="224" rx="46" ry="7" fill="#7a6aa8" opacity="0.16"/>`;
   back += `<radialGradient id="${uid}-glow"><stop offset="0.55" stop-color="#fff3a8" stop-opacity="${glee ? 0.85 : 0.5}"/><stop offset="1" stop-color="#fff3a8" stop-opacity="0"/></radialGradient>`;
@@ -223,12 +232,13 @@ function eggSvg({ traits, live, egg, uid, expr, sy }) {
     // a little opening, with two eyes peeking out (they mirror your blinks)
     b += `<path d="M98 160 q22 -12 44 0 q-22 14 -44 0 z" fill="#3b2f4f" stroke="${INK}" stroke-width="2.4"/>`;
     const big = expr === 'wow' ? 1.35 : 1;
-    b += `<g class="m-eyes">${[110, 130].map((x) => (live.eyesClosed
+    b += `<g class="m-eyes">${[110, 130].map((x) => (live.eyesClosed || (live.wink && x === 130)
       ? `<path d="M${x - 4} 161 h8" stroke="#fff7a8" stroke-width="2.4" stroke-linecap="round"/>`
       : `<ellipse cx="${x}" cy="160" rx="${f1(3.6 * big)}" ry="${f1(4.4 * big)}" fill="#fff7a8"/><circle cx="${x - 1}" cy="158.5" r="1.3" fill="#fff"/>`)).join('')}</g>`;
   }
   let fx = '';
   if (glee) fx += star(172, 104, 7, '#ffe27a', `stroke="${INK}" stroke-width="1.2"`) + star(64, 124, 5, '#ffb3c9', `stroke="${INK}" stroke-width="1.2"`) + heart(178, 150, 0.9, '#ffb3c9');
+  if (live.face === 'extra') fx += heart(66, 168, 1, '#ff9fc0') + heart(120, 86, 0.8, '#ffb3c9') + star(176, 196, 6, '#fff3a0', `stroke="${INK}" stroke-width="1.2"`);
   if (egg?.hatching) fx += star(120, 84, 9, '#fff3a0', `stroke="${INK}" stroke-width="1.2"`);
   return `${back}<g class="egg-body"><g transform="translate(120 222) scale(1 ${sy.toFixed(3)}) translate(-120 -222)">${b}</g>${fx}</g>`;
 }
@@ -327,7 +337,7 @@ export function monsterSvg({ stage, traits, live = {}, standalone = false, backd
   });
 
   // tiny arms, waving up when grinning
-  const armUp = expr === 'grin' || expr === 'proud';
+  const armUp = expr === 'grin' || expr === 'proud' || expr === 'extra';
   for (const side of [-1, 1]) {
     const ax = cx + side * rx * 0.94, ay = cy + ry * 0.15;
     const rot = side * (armUp ? -50 : 20);
@@ -337,10 +347,10 @@ export function monsterSvg({ stage, traits, live = {}, standalone = false, backd
   // face
   const ey = cy - ry * 0.12;
   const erx = (9.5 + t.bigEyes * 1.2) * s * 1.15, ery = (11.5 + t.bigEyes * 1.3) * s * 1.15;
-  const blushOn = expr === 'grin' || expr === 'shy' || expr === 'proud' || expr === 'playful';
+  const blushOn = expr === 'grin' || expr === 'extra' || expr === 'shy' || expr === 'proud' || expr === 'playful';
   b += `<ellipse cx="${f1(cx - rx * 0.52)}" cy="${f1(ey + ery + 5 * s)}" rx="${f1(11 * s)}" ry="${f1(6.5 * s)}" fill="${BLUSH}" opacity="${blushOn ? 0.75 : 0.45}"/>`;
   b += `<ellipse cx="${f1(cx + rx * 0.52)}" cy="${f1(ey + ery + 5 * s)}" rx="${f1(11 * s)}" ry="${f1(6.5 * s)}" fill="${BLUSH}" opacity="${blushOn ? 0.75 : 0.45}"/>`;
-  b += eyes({ cx, cy: ey, gap: rx * 0.34, rx: erx, ry: ery, expr, closed: !!live.eyesClosed, body });
+  b += eyes({ cx, cy: ey, gap: rx * 0.34, rx: erx, ry: ery, expr, closed: !!live.eyesClosed, wink: !!live.wink });
   b += mouth({ cx, cy: ey + ery + 9 * s, expr, s });
 
   // growing-up accessories, same character every level
@@ -370,6 +380,7 @@ export function monsterSvg({ stage, traits, live = {}, standalone = false, backd
   g += `<g transform="translate(${cx} ${floor}) scale(1 ${sy.toFixed(3)}) translate(-${cx} -${floor})">${b}</g>`;
   if (expr === 'sleepy') g += `<text x="${f1(cx + rx * 0.8)}" y="${f1(cy - ry * 0.7)}" font-family="system-ui,sans-serif" font-weight="800" font-size="18" fill="#9a86d6">z</text><text x="${f1(cx + rx * 0.8 + 13)}" y="${f1(cy - ry * 0.7 - 14)}" font-family="system-ui,sans-serif" font-weight="800" font-size="13" fill="#9a86d6">z</text>`;
   if (live.talking) g += `<text x="${f1(cx - rx - 10)}" y="${f1(cy - ry * 0.55)}" font-family="system-ui,sans-serif" font-weight="900" font-size="22" fill="#6fb6f0">♪</text>`;
+  if (expr === 'extra') g += heart(cx - rx * 1.05, cy - ry * 0.9, 1.1, '#ffb3c9') + heart(cx + rx * 1.1, cy - ry * 0.2, 0.9, '#ff9fc0') + star(cx + rx * 0.9, cy - ry * 1.05, 8, '#ffe27a', `stroke="${INK}" stroke-width="1.2"`) + star(cx - rx * 1.15, cy - ry * 0.15, 6, '#fff3a0', `stroke="${INK}" stroke-width="1.2"`);
   if (expr === 'grin') g += star(cx + rx * 0.95, cy - ry * 0.85, 7, '#ffe27a', `stroke="${INK}" stroke-width="1.2"`) + star(cx - rx * 1.0, cy - ry * 0.7, 5, '#ffb3c9', `stroke="${INK}" stroke-width="1.2"`);
 
   return `<svg ${head} viewBox="0 0 240 240" class="monster-svg" role="img" aria-label="Smile Monster, level ${lvl + 1}">

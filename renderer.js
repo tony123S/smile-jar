@@ -18,7 +18,8 @@
 
 'use strict';
 
-import { SmileDetector, DEFAULTS as SMILE, happyScore, mascotFace } from './src/smile-detector.js';
+import { SmileDetector, DEFAULTS as SMILE, happyScore } from './src/smile-detector.js';
+import { MoodMirror } from './src/mood.js';
 import {
   pledgeFor, sessionPledge, marginalRate, formatCents, pledgeStatementCsv, sponsorOwes, confirmedTotal, pledgeLedger,
 } from './src/pledges.js';
@@ -623,7 +624,9 @@ function liveFace() {
   const now = Date.now();
   return {
     face: s.face,
-    eyesClosed: s.blink.closed || now < s.eyesClosedUntil,
+    // a wink keeps one eye open, so it takes over from the blink that triggered it
+    eyesClosed: now >= s.winkUntil && (s.blink.closed || now < s.eyesClosedUntil),
+    wink: now < s.winkUntil,
     breath: state.settings.breathMirror ? s.breath.level() : null,
     talking: !!s.talking,
     talkOpen: !!s.talking && Math.floor(now / 170) % 2 === 0,
@@ -677,6 +680,8 @@ function renderSignals() {
 
 function renderSession() {
   if (!session) return;
+  const calm = session.mood.tick(Date.now()); // relax if the face has gone quiet
+  applyMood(calm, new Set(calm.events), Date.now());
   const cents = sessionPledge(state.campaign.sponsors, session.before, session.smiles);
   $('s-smiles').textContent = session.smiles;
   $('s-money').textContent = formatCents(cents);
@@ -810,7 +815,24 @@ function onSmile(peakHappy = 0) {
   scheduleMonster();
 }
 
-const SURPRISE_COOLDOWN_MS = 3000;
+// Show the smoothed mood on the monster, and react to its one-off moments.
+function applyMood(mood, events, now) {
+  const s = session;
+  if (!mood || !s) return;
+  if (events.has('jump')) {
+    s.surprises += 1; // big sparkly eyes grow with surprise moments
+    bounceClass('jump', 700);
+    popBadge('Whoa!', 'wow');
+    sfx.wow();
+  }
+  if (events.has('extra')) {
+    popBadge('Extra happy!', 'gold');
+    speak(s.voice.onExtra(now).text);
+    sfx.happy();
+    for (let i = 0; i < 4; i++) popAt('♥', 'heart', (i - 1.5) * 40, i * 140);
+  }
+  if (mood.face !== s.face) { s.face = mood.face; scheduleMonster(); }
+}
 
 function handleMetrics(m) {
   const s = session;
@@ -829,17 +851,12 @@ function handleMetrics(m) {
       if (!session) return; // the session may have ended inside onSmile
     }
     updateMeter(detector.level);
-    const face = mascotFace(expressions[expressions.length - 1]);
-    if (face !== s.face) {
-      if (face === 'wow' && now - s.lastSurpriseAt > SURPRISE_COOLDOWN_MS) {
-        s.lastSurpriseAt = now;
-        s.surprises += 1; // big sparkly eyes grow with surprise moments
-        popBadge('Whoa!', 'wow');
-        sfx.wow();
-      }
-      s.face = face;
-      scheduleMonster();
-    }
+    // The monster's face comes from the smoothed mood, not the raw latest score, so it doesn't flicker.
+    let mood;
+    const events = new Set();
+    for (const e of expressions) { mood = s.mood.push(e, now); mood.events.forEach((x) => events.add(x)); }
+    applyMood(mood, events, now);
+    const face = s.face;
     const line = s.voice.onTick({ face }, now);
     if (line) speak(line.text);
   }
@@ -847,8 +864,9 @@ function handleMetrics(m) {
   if (f?.blinking?.length) {
     const wasClosed = s.blink.closed;
     if (s.blink.push(f.blinking) > 0) {
-      s.eyesClosedUntil = now + 160; // keep very short blinks visible
-      setTimeout(scheduleMonster, 170);
+      // it blinks back, and every few blinks it winks instead
+      if (s.mood.blink() === 'wink') { s.winkUntil = now + 500; setTimeout(scheduleMonster, 510); }
+      else { s.eyesClosedUntil = now + 160; setTimeout(scheduleMonster, 170); } // keep very short blinks visible
     }
     if (s.blink.closed !== wasClosed || s.eyesClosedUntil > now) scheduleMonster();
   }
@@ -945,6 +963,8 @@ async function startSession() {
     blink: new BlinkTracker(),
     breath: new BreathNormalizer(),
     eyesClosedUntil: 0,
+    winkUntil: 0,
+    mood: new MoodMirror(),
     talking: false,
     talkTimer: null,
     toldLearned: false,
@@ -956,7 +976,6 @@ async function startSession() {
     diet: {},
     snack: {},
     surprises: 0,
-    lastSurpriseAt: -Infinity,
     evolutions: [],
   };
   $('s-badge').hidden = true;

@@ -12,6 +12,7 @@ const LINES = {
   wow: ['Whoa!', 'Didn’t see that coming, huh?'],
   nudge: ['Psst. Read the card.', 'The world feels a bit grey...', 'Is that a smile I almost see?'],
   learned: ['I think I know what you like.', 'I know what makes you smile!'],
+  extra: ['I\u2019m SO happy!', 'This is the best day ever!', 'Keep smiling, I love it!'],
   evolve: ['I\u2019M GROWING!', 'Something is happening to me!', 'Look at me now!', 'The world is waking up!'],
   snack: ['A snack from a sponsor!', 'Ooh, this one\u2019s from a friend.'],
   talking: ['Shh, I\u2019m listening...', 'Are you talking to me?'],
@@ -57,6 +58,9 @@ export class MonsterVoice {
     if (now - this.lastEventAt >= this.nudgeAfterMs) { this.lastEventAt = now; return this.say('nudge', now); }
     return null;
   }
+
+  /** You've been smiling for a while and the monster is extra happy. Always speaks. */
+  onExtra(now) { this.lastEventAt = now; return this.say('extra', now); }
 
   onEvolve(now) { this.lastEventAt = now; return this.say('evolve', now); }
 

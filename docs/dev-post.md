@@ -72,13 +72,15 @@ Then each signal drives one thing:
 
 | You | SDK signal | The monster |
 | --- | --- | --- |
-| Smile | Expressions (HAPPY score) | grins, waves its little arms, and gets +10 XP when the smile counts |
-| Look surprised | Expressions (SURPRISE score) | opens its eyes and mouth wide |
-| Blink | Blinking | blinks back at you |
+| Smile | Expressions (HAPPY score) | grins and waves its little arms, and gets +10 XP when the smile counts. Keep smiling for 3 seconds and it gets extra happy |
+| Look surprised | Expressions (SURPRISE score) | opens its eyes and mouth wide and does a little jump |
+| Blink | Blinking | blinks back at you, and every fifth blink it winks |
 | Talk | Talking | moves its mouth along with you |
 | Breathe | Breathing trace | its body gently rises and falls with yours |
 
 The HAPPY score jumps around a lot, so not every twitch counts. A smile only counts if the score stays above 60% for half a second, and then you have to relax your face before the next one. One long grin is one smile. XP and the charity pledge both come from that same smile count, so a smile can't be rewarded twice.
+
+The monster's face uses the same scores, but copying them straight across made it flicker. So they go through a small mood filter first. It smooths the scores and only changes the face when an expression has held for a moment. When you stop smiling, the monster fades back to calm through a soft smile instead of snapping. I only mirror happy and surprised. The SDK also gives sad and angry, but I couldn't check how reliable those are, so I left them out.
 
 Each smile is also matched to the joke that was on screen when it started. That's how the monster knows you're an animal lover, and how the joke cards learn to show you more of what works on you.
 
