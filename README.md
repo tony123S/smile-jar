@@ -2,7 +2,7 @@
 
 ![Smile Monster cover](docs/cover.png)
 
-*"A little monster was born into a world without happiness. Every smile gives it the power to bring that world back to life."*
+*"A mysterious egg is waiting in a world without happiness. Every smile helps it hatch, and helps the little monster inside bring that world back to life."*
 
 **Smile Monster** is a cute, story-driven desktop game. Your real smiles, picked up live from the camera by the [Presage SmartSpectra SDK](https://github.com/Presage-Security/SmartSpectra), give a little pastel monster happiness energy. It grows up over five chapters, and its grey, faded world comes back to life with each one. At the same time, friends, family or coworkers pledge an amount per smile to a charity you pick, so your smiles also do some good in the real world.
 
@@ -14,17 +14,17 @@ Built for the DEV Presage SmartSpectra SDK Challenge (`#presagechallenge`). The 
 
 ## The game
 
-**Opening story.** Four short full-screen scenes tell the story: a world that lost its smiles, a little monster born into it, the first spark of happiness, and the first flowers blooming. There's a **Continue** button, **Skip story**, and a final **LET'S BEGIN!**. The story plays once (it's remembered on this device) and can be replayed from the home screen or settings. The camera is never on during the story.
+**Opening story.** Four short full-screen scenes tell the story: a world that lost its smiles, a mysterious egg in the last grey meadow, a first smile that makes it glow and wiggle, and the egg starting to crack. There's a **Continue** button, **Skip story**, and a final **LET'S BEGIN!**. The story plays once (it's remembered on this device) and can be replayed from the home screen or settings. The camera is never on during the story.
 
 **Five chapters, five levels.** Every qualifying smile gives **+10 XP**. The monster is the same round, squishy character at every level; it just grows up:
 
 | Level | Chapter | Smiles | The monster | The world |
 | --- | --- | --- | --- | --- |
-| 1 | The First Smile | 0 | Baby with a bit of eggshell on its head, shy | grey; the first smile brings back glowing lights |
-| 2 | The Awakening | 3 | Sleepyhead with a sprout, dozing until you smile | flowers and grass return |
-| 3 | The Power of Joy | 8 | Joyling with a little bud, cheerful | trees, a warm sun and twinkling stars |
-| 4 | Spread the Happiness | 15 | Sparkler with sparkle wings, playful | a colourful sky and a rainbow |
-| 5 | The World of Smiles | 25 | Smile Monster with a flower crown and a glow, proud | the full magical world: mushroom houses, floating hearts |
+| 1 | The Mysterious Egg | 0 | Mysterious Egg: it glows and wiggles when you smile, cracks a little with each smile, shakes when it's nearly ready, and eyes peek out of the crack | grey; the first smile brings back glowing lights |
+| 2 | The Awakening | 3 | Baby Monster, just hatched, with a bit of eggshell on its head, shy | flowers and grass return |
+| 3 | The Power of Joy | 8 | Growing Monster with a sprout and a little bud, cheerful | trees, a warm sun and twinkling stars |
+| 4 | Spread the Happiness | 15 | Happy Monster with sparkle wings, playful | a colourful sky and a rainbow |
+| 5 | The World of Smiles | 25 | Guardian of Joy with a flower crown and a glow, proud | the full magical world: mushroom houses, floating hearts |
 
 Each level-up plays an evolution animation, a fanfare that's different for every level, a chapter-complete chime and a line from the monster.
 

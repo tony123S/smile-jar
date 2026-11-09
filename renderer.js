@@ -32,7 +32,7 @@ import { music } from './src/music.js';
 import { drawReceipt } from './src/receipt.js';
 import { SimulatedSDK } from './src/simulator.js';
 import {
-  STAGES, stageFor, traitsFor, monsterName, monsterSvg, emptyMonster, DIET_KINDS, xpFor, worldTier, XP_PER_SMILE,
+  STAGES, stageFor, eggState, traitsFor, monsterName, monsterSvg, emptyMonster, DIET_KINDS, xpFor, worldTier, XP_PER_SMILE,
 } from './src/monster.js';
 import { worldSvg } from './src/world.js';
 import { SIGNALS, SignalMonitor, BlinkTracker, talkingNow, BreathNormalizer } from './src/signals.js';
@@ -157,8 +157,17 @@ function monsterLook(m) {
 let uidSeq = 0;
 function drawMonster(el, m, live = {}, opts = {}) {
   const { stage, traits } = monsterLook(m);
-  const svg = monsterSvg({ stage: stage.key, traits, live, uid: `m${++uidSeq}`, ...opts });
-  if (el) el.innerHTML = svg;
+  const o = { stage: stage.key, traits, live, uid: `m${++uidSeq}`, egg: eggState(m.smiles), ...opts };
+  const svg = monsterSvg(o);
+  if (el) {
+    el.innerHTML = svg;
+    // The egg's rocking and shaking live on the wrapper, which is never redrawn, so they don't
+    // restart every time a live signal redraws the egg.
+    const isEgg = o.stage === 'egg';
+    el.classList.toggle('egg', isEgg);
+    el.classList.toggle('shake', isEgg && !!o.egg?.shake);
+    el.classList.toggle('hatching', isEgg && !!o.egg?.hatching);
+  }
   return svg;
 }
 
@@ -174,6 +183,7 @@ function drawWorld(id, tier, { fade = false } = {}) {
 function chapterLine(stage) { return `Chapter ${stage.level} · ${stage.chapter}`; }
 
 function nextLine(stage) {
+  if (stage.key === 'egg') return `${plural(stage.toNext, 'more smile', 'more smiles')} until the egg hatches`;
   return stage.next
     ? `${plural(stage.toNext, 'more smile', 'more smiles')} until it grows into a ${stage.next.label}`
     : 'Fully grown, and the whole world is smiling again!';
@@ -182,6 +192,13 @@ function nextLine(stage) {
 function xpText(xp) {
   return xp.levelSize == null ? `${xp.xp} XP · max level` : `${xp.intoLevel} / ${xp.levelSize} XP`;
 }
+
+// Before it hatches, the bar is the egg's happiness bar.
+function barText(look, m) {
+  if (look.stage.key === 'egg') return `\u{1F497} Happiness ${m.smiles} / ${look.stage.next.at}`;
+  return xpText(look.xp);
+}
+function markBar(fillId, look) { $(fillId).parentElement.classList.toggle('happiness', look.stage.key === 'egg'); }
 
 function xpWidth(xp) { return xp.levelSize == null ? 100 : (xp.intoLevel / xp.levelSize) * 100; }
 
@@ -208,19 +225,19 @@ const SCENES = [
     tier: 0, monster: null,
   },
   {
-    title: 'The Little Monster',
-    text: 'A little monster was born. But it had never seen a smile, and its world was slowly fading away.',
+    title: 'The Mysterious Egg',
+    text: 'In the very last grey meadow, a mysterious egg was waiting. Something inside was asleep.',
     tier: 0, monster: { face: 'flat', tiny: true },
   },
   {
     title: 'A New Friend',
-    text: 'Then, someone came along. A single smile gave the monster a little spark of happiness.',
-    tier: 0, spark: true, monster: { face: 'wow', tiny: true },
+    text: 'Then, someone came along and smiled. The egg began to glow, and gave a tiny wiggle!',
+    tier: 0, spark: true, monster: { face: 'grin', tiny: true },
   },
   {
     title: 'Your Adventure Begins',
-    text: 'Every smile makes it stronger. Can you help this little monster bring its world back to life?',
-    tier: 2, monster: { face: 'grin' },
+    text: 'Every smile fills the egg with happiness. Can you help it hatch, and bring the world back to life?',
+    tier: 1, monster: { face: 'grin', cracks: 1 },
   },
 ];
 let sceneIdx = 0;
@@ -234,7 +251,7 @@ function renderScene(i, animate = true) {
     mon.hidden = !sc.monster;
     if (sc.monster) {
       mon.classList.toggle('tiny', !!sc.monster.tiny);
-      mon.innerHTML = monsterSvg({ stage: 'egg', traits: traitsFor(emptyMonster()), live: { face: sc.monster.face }, uid: `sm${i}` });
+      mon.innerHTML = monsterSvg({ stage: 'egg', traits: traitsFor(emptyMonster()), live: { face: sc.monster.face }, egg: { cracks: sc.monster.cracks || 0 }, uid: `sm${i}` });
     }
     $('story-title').textContent = sc.title;
     const t = $('story-text');
@@ -326,13 +343,16 @@ function renderHome() {
   $('home-level').textContent = `Lv ${look.stage.level}`;
   $('home-name').textContent = look.name;
   $('home-stage').textContent = chapterLine(look.stage);
-  $('home-stage-fill').style.width = `${xpWidth(look.xp)}%`;
-  $('home-xp').textContent = xpText(look.xp);
+  $('home-stage-fill').style.width = `${look.stage.key === 'egg' ? eggState(m.smiles).happiness * 100 : xpWidth(look.xp)}%`;
+  $('home-xp').textContent = barText(look, m);
+  markBar('home-stage-fill', look);
   $('home-next').textContent = nextLine(look.stage);
   const eaten = DIET_KINDS.some((k) => (m.diet[k] || 0) > 0);
   $('home-diet').hidden = !eaten;
   $('home-diet').textContent = eaten ? dietLine(m) : '';
-  $('home-goal-line').textContent = look.stage.next
+  $('home-goal-line').textContent = look.stage.key === 'egg'
+    ? `\u{1F95A} Press PLAY and smile ${plural(look.stage.toNext, 'time', 'times')} to hatch the egg`
+    : look.stage.next
     ? `\u{1F60A} Press PLAY and smile ${plural(look.stage.toNext, 'time', 'times')} to finish Chapter ${look.stage.level}`
     : '\u{1F308} You restored the whole world! Keep playing to raise more for charity.';
   renderChapters(look.stage.index, $('chapter-dots'));
@@ -619,13 +639,17 @@ function renderMonsterNow() {
   if (!session) return;
   const m = liveMonster();
   const look = monsterLook(m);
-  drawMonster($('s-monster'), m, liveFace());
+  const hatching = session.hatching ? { stage: 'egg', egg: { cracks: 3, shake: true, hatching: true } } : {};
+  drawMonster($('s-monster'), m, liveFace(), hatching);
   drawWorld('s-world', look.tier, { fade: true });
   $('s-level').textContent = `Lv ${look.stage.level}`;
   $('s-name').textContent = look.name;
   $('s-stage').textContent = chapterLine(look.stage);
-  $('s-stage-fill').style.width = `${xpWidth(look.xp)}%`;
-  $('s-xp').textContent = look.stage.next
+  $('s-stage-fill').style.width = `${look.stage.key === 'egg' ? eggState(m.smiles).happiness * 100 : xpWidth(look.xp)}%`;
+  markBar('s-stage-fill', look);
+  $('s-xp').textContent = look.stage.key === 'egg'
+    ? `${barText(look, m)} \u00b7 ${plural(look.stage.toNext, 'smile', 'smiles')} to hatch`
+    : look.stage.next
     ? `${xpText(look.xp)} \u00b7 ${plural(look.stage.toNext, 'smile', 'smiles')} to grow`
     : xpText(look.xp);
 }
@@ -691,7 +715,46 @@ function bounceClass(cls, ms) {
   setTimeout(() => card.classList.remove(cls), ms);
 }
 
+const HATCH_SHAKE_MS = 1300;
+
+// The egg shakes hard for a moment, the shell bursts, and the baby pops out.
+function hatchEgg(to) {
+  const s = session;
+  s.hatching = true;
+  sfx.eggShake();
+  setTimeout(() => sfx.eggShake(), 420);
+  setTimeout(() => sfx.eggShake(), 840);
+  popBadge('The egg is hatching!', 'evolve');
+  scheduleMonster();
+  setTimeout(() => {
+    if (session !== s) return;
+    s.hatching = false;
+    sfx.hatch();
+    bounceClass('hatched', 1400);
+    shellBurst();
+    popBadge(`It hatched! Say hi to your ${to.label}!`, 'evolve');
+    speak(s.voice.onEvolve(Date.now()).text);
+    for (let i = 0; i < 6; i++) popAt('♥', 'heart', (i - 2.5) * 34, 200 + i * 120);
+    renderMonsterNow();
+  }, HATCH_SHAKE_MS);
+  s.evolutions.push(to);
+}
+
+function shellBurst() {
+  const box = $('s-monster').getBoundingClientRect();
+  for (const side of ['left', 'right']) {
+    const el = document.createElement('div');
+    el.className = `shell ${side}`;
+    el.innerHTML = `<svg viewBox="0 0 60 50" width="60" height="50"><path d="${side === 'left' ? 'M4 46 C4 22 18 4 40 4 l-6 12 l10 8 l-8 10 l8 12 z' : 'M56 46 C56 22 42 4 20 4 l6 12 l-10 8 l8 10 l-8 12 z'}" fill="#fffaf0" stroke="#4a3b5c" stroke-width="3" stroke-linejoin="round"/></svg>`;
+    el.style.left = `${box.left + box.width / 2 - 30}px`;
+    el.style.top = `${box.top + box.height * 0.45}px`;
+    $('pop-layer').appendChild(el);
+    setTimeout(() => el.remove(), 1300);
+  }
+}
+
 function celebrateEvolution(from, to) {
+  if (from.key === 'egg') { hatchEgg(to); return; }
   bounceClass('evolving', 1700);
   sfx.evolve(to.level);
   sfx.chapter();
@@ -738,12 +801,13 @@ function onSmile(peakHappy = 0) {
   if (worth > 0) popAt(`+${worth}¢ for charity`, 'cents', 40, 180);
   const xpBar = $('s-stage-fill').parentElement;
   xpBar.classList.remove('gain'); void xpBar.offsetWidth; xpBar.classList.add('gain');
-  bounceClass('happy', 520);
+  if (before.key === 'egg') bounceClass('egg-wiggle', 650);
+  else bounceClass('happy', 520);
 
   if (s.mode === 'poker') { sfx.crack(); s.voice.resetStreak(); }
   else if (golden) sfx.golden();
   else { sfx.smile(); if (s.combo > 1) sfx.combo(s.combo); }
-  sfx.happy();
+  if (before.key === 'egg') sfx.eggShake(); else sfx.happy();
   sfx.xp();
   if (snackFrom) sfx.snack();
   speak(s.voice.onSmile({ mode: s.mode, golden, combo: s.combo }, now).text);
@@ -752,7 +816,8 @@ function onSmile(peakHappy = 0) {
   const tierAfter = worldTier(liveMonster().smiles);
   if (tierAfter !== tierBefore && tierAfter >= 1) setTimeout(() => sfx.bloom(), 450); // the world comes back a little
   if (after.index > before.index) celebrateEvolution(before, after);
-  else if (tierBefore === 0) popBadge('The first light is back!', 'evolve');
+  else if (tierBefore === 0) popBadge('The egg is glowing! The first light is back!', 'evolve');
+  else if (after.key === 'egg') popBadge('Crack! Something is moving inside...', 'evolve');
   else if (snackFrom) popBadge(`${snackFrom.name}’s snack got you!`, 'snack');
   else if (s.mode === 'poker') popBadge(s.combo > 1 ? `Cracked again! x${s.combo}` : 'You cracked!', 'crack');
   else if (golden) popBadge(s.combo > 1 ? `Golden grin! Combo x${s.combo}` : 'Golden grin!', 'gold');

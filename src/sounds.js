@@ -44,6 +44,16 @@ export const sfx = {
   golden() { arp([1047, 1319, 1568, 2093], 0.07, 0.28, { type: 'triangle', gain: 0.15 }); },
   combo(n) { tone(660 + Math.min(n, 8) * 90, 0, 0.12, { type: 'square', gain: 0.06 }); },
   crack() { tone(520, 0, 0.35, { type: 'sawtooth', gain: 0.08, slideTo: 140 }); tone(1320, 0.05, 0.12, { type: 'triangle' }); },
+  /** The egg wobbles: two soft, bouncy knocks. */
+  eggShake() { tone(330, 0, 0.09, { type: 'sine', gain: 0.14, slideTo: 392 }); tone(294, 0.11, 0.09, { type: 'sine', gain: 0.12, slideTo: 349 }); tone(370, 0.22, 0.1, { type: 'triangle', gain: 0.08 }); },
+  /** The shell gives way, then a sparkly "hello!" as the baby pops out. */
+  hatch() {
+    duckMusic(2.4);
+    [0, 0.07, 0.13].forEach((t, i) => tone(1800 - i * 300, t, 0.05, { type: 'square', gain: 0.05 }));
+    tone(600, 0.16, 0.25, { type: 'sawtooth', gain: 0.06, slideTo: 180 });
+    arp([784, 988, 1175, 1568, 1976], 0.08, 0.4, { type: 'triangle', gain: 0.12 });
+    tone(523, 0.62, 0.18, { type: 'sine', gain: 0.12, slideTo: 1047 });
+  },
   wow() { tone(300, 0, 0.3, { type: 'sine', gain: 0.12, slideTo: 900 }); },
   snack() { tone(880, 0, 0.1, { type: 'square', gain: 0.05 }); tone(1175, 0.08, 0.16, { type: 'triangle', gain: 0.12 }); },
   /** Flowers popping open in the world. */

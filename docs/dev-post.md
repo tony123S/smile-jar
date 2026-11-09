@@ -19,19 +19,19 @@ cover_image:
 
 ## What I Built
 
-> A little monster was born into a world without happiness. Every smile gives it the power to bring that world back to life.
+> A mysterious egg is waiting in a world without happiness. Every smile helps it hatch, and helps the little monster inside bring that world back to life.
 
-**Smile Monster** is a small, cute story game for your laptop. You open it and get a short story: a colourful world that lost all its smiles, and a tiny pastel monster born into it that has never seen one. Then it's your turn. Every real smile the SmartSpectra SDK sees through your camera gives the monster happiness energy, and slowly its grey world gets its colours back.
+**Smile Monster** is a small, cute story game for your laptop. You open it and get a short story: a colourful world that lost all its smiles, and a mysterious egg waiting in the last grey meadow. Then it's your turn. Every real smile the SmartSpectra SDK sees through your camera gives the monster happiness energy, and slowly its grey world gets its colours back.
 
 There are five chapters:
 
-1. **The First Smile** - a baby monster with a bit of eggshell still on its head, in a grey world. Your first smile brings back little glowing lights.
-2. **The Awakening** - it gets a sprout and a sleepy face, and flowers and grass come back.
-3. **The Power of Joy** - trees, a warm sun and twinkling stars return.
-4. **Spread the Happiness** - it grows sparkle wings, and the sky fills with colour and a rainbow.
-5. **The World of Smiles** - a flower crown, a soft glow, mushroom houses and floating hearts.
+1. **The Mysterious Egg** - it starts as an egg in a grey world. Every smile makes it glow and wiggle and adds a crack. When it's one smile away it starts to shake, and two little eyes peek out of the crack. On the third smile it hatches.
+2. **The Awakening** - a Baby Monster with a bit of eggshell still on its head, and flowers and grass come back.
+3. **The Power of Joy** - it becomes a Growing Monster with a sprout, and trees, a warm sun and twinkling stars return.
+4. **Spread the Happiness** - a Happy Monster with sparkle wings, and the sky fills with colour and a rainbow.
+5. **The World of Smiles** - the Guardian of Joy, with a flower crown, a soft glow, mushroom houses and floating hearts.
 
-It's always the same round, squishy monster with big sparkly eyes and tiny arms, it just grows up. Every smile is +10 XP, and every level-up has its own little animation and fanfare.
+After it hatches it's always the same round, squishy monster with big sparkly eyes and tiny arms, it just grows up. Every smile is +10 XP, and every level-up has its own little animation and fanfare.
 
 What it looks like also depends on what made you smile. Puns give it tiny horns, animal facts give it fluffy ears, memories make it glow, daydream cards give it star freckles. So your monster might be a "Fluffy Furbun" and your friend's a "Dreamy Starbean".
 

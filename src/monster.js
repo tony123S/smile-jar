@@ -5,16 +5,17 @@
 // so every monster ends up different. Live mirroring (face, blink, breathing, talking) is passed
 // in from real SDK signals by the renderer; this module never invents a signal.
 //
-// The monster is the same round, squishy character at every level. It just grows up: a bit of
-// eggshell on its head as a baby, a sprout when it wakes, little arms, sparkle wings, then a
-// flower crown. Stage keys are kept from earlier versions so old saves still load.
+// It starts as a Mysterious Egg that glows, wiggles and cracks as you smile, then hatches.
+// After that it is the same round, squishy character at every level. It just grows up: a bit of
+// eggshell on its head as a baby, a sprout, sparkle wings, then a flower crown. Stage keys are
+// kept from earlier versions so old saves still load on the same level.
 
 export const STAGES = Object.freeze([
-  { key: 'egg', label: 'Baby', chapter: 'The First Smile', at: 0, mood: 'shy' },
-  { key: 'blob', label: 'Sleepyhead', chapter: 'The Awakening', at: 3, mood: 'sleepy' },
-  { key: 'hatchling', label: 'Joyling', chapter: 'The Power of Joy', at: 8, mood: 'happy' },
-  { key: 'sprite', label: 'Sparkler', chapter: 'Spread the Happiness', at: 15, mood: 'playful' },
-  { key: 'final', label: 'Smile Monster', chapter: 'The World of Smiles', at: 25, mood: 'proud' },
+  { key: 'egg', label: 'Mysterious Egg', chapter: 'The Mysterious Egg', at: 0, mood: 'egg' },
+  { key: 'blob', label: 'Baby Monster', chapter: 'The Awakening', at: 3, mood: 'shy' },
+  { key: 'hatchling', label: 'Growing Monster', chapter: 'The Power of Joy', at: 8, mood: 'happy' },
+  { key: 'sprite', label: 'Happy Monster', chapter: 'Spread the Happiness', at: 15, mood: 'playful' },
+  { key: 'final', label: 'Guardian of Joy', chapter: 'The World of Smiles', at: 25, mood: 'proud' },
 ]);
 
 export const XP_PER_SMILE = 10;
@@ -40,6 +41,22 @@ export function stageFor(smiles) {
   const from = STAGES[i].at;
   const progress = next ? (smiles - from) / (next.at - from) : 1;
   return { index: i, level: i + 1, ...STAGES[i], next, toNext: next ? next.at - smiles : 0, progress: Math.max(0, Math.min(1, progress)) };
+}
+
+/**
+ * How the egg looks before it hatches: each smile adds a crack, and it starts to shake when
+ * it is one smile away. `happiness` (0..1) is what the happiness bar shows.
+ */
+export function eggState(smiles) {
+  const hatchAt = STAGES[1].at;
+  const n = Math.max(0, Math.min(hatchAt, smiles || 0));
+  return {
+    hatched: n >= hatchAt,
+    cracks: Math.min(3, Math.floor((n / hatchAt) * 3)),
+    shake: n >= hatchAt - 1,
+    happiness: n / hatchAt,
+    toHatch: hatchAt - n,
+  };
 }
 
 /** XP is just qualifying smiles x 10, so a smile can never be rewarded twice. */
@@ -91,7 +108,7 @@ const ADJ = { 'Pun': 'Giggly', 'Animal fact': 'Fluffy', 'Memory': 'Glowy', 'Pict
 const NOUN = { 'Pun': 'Puffhorn', 'Animal fact': 'Furbun', 'Memory': 'Glimmer', 'Picture this': 'Starbean', 'Sponsor snack': 'Snackling' };
 
 export function monsterName(traits, stageKey) {
-  if (!traits.dominant) return stageKey === 'egg' ? 'Little Mochi' : 'Mochi';
+  if (!traits.dominant) return stageKey === 'egg' || stageKey === 'blob' ? 'Little Mochi' : 'Mochi';
   const adj = traits.stone >= 2 ? 'Steady' : ADJ[traits.dominant];
   const noun = NOUN[traits.second || traits.dominant];
   return `${adj} ${noun}`;
@@ -176,6 +193,46 @@ function mouth({ cx, cy, expr, s }) {
 
 const SIZE = { egg: 0.6, blob: 0.72, hatchling: 0.84, sprite: 0.94, final: 1.04 };
 
+const EGG_PATH = 'M120 96 C150 96 170 150 170 178 C170 206 148 222 120 222 C92 222 70 206 70 178 C70 150 90 96 120 96 Z';
+const CRACKS = [
+  'M71 166 l14 -6 l7 9 l12 -8 l6 7',
+  'M169 158 l-13 6 l-6 -8 l-11 9 l-7 -6',
+  'M86 190 l12 -7 l9 8 l12 -9 l11 8 l12 -8 l13 6',
+];
+
+/** The Mysterious Egg. Live signals still apply: it glows when you smile, and once it has
+ *  cracked open a little, two eyes peek out and blink with you. */
+function eggSvg({ traits, live, egg, uid, expr, sy }) {
+  const spot = traits.body || DEFAULT_BODY;
+  const glee = live.face === 'grin';
+  const cracks = egg?.cracks || 0;
+  let back = `<ellipse cx="120" cy="224" rx="46" ry="7" fill="#7a6aa8" opacity="0.16"/>`;
+  back += `<radialGradient id="${uid}-glow"><stop offset="0.55" stop-color="#fff3a8" stop-opacity="${glee ? 0.85 : 0.5}"/><stop offset="1" stop-color="#fff3a8" stop-opacity="0"/></radialGradient>`;
+  back += `<ellipse cx="120" cy="158" rx="${glee ? 82 : 70}" ry="${glee ? 82 : 72}" fill="url(#${uid}-glow)"/>`;
+  let b = `<clipPath id="${uid}-egg"><path d="${EGG_PATH}"/></clipPath>`;
+  b += `<path d="${EGG_PATH}" fill="#fffaf0"/>`;
+  b += `<g clip-path="url(#${uid}-egg)">`;
+  for (const [x, y, r] of [[98, 132, 11], [142, 122, 8], [150, 172, 13], [92, 186, 9], [124, 206, 10], [118, 150, 6]]) {
+    b += `<circle cx="${x}" cy="${y}" r="${r}" fill="${spot}"/>`;
+  }
+  b += `<path d="M70 196 q25 -12 50 0 t50 0 v30 h-100 z" fill="${spot}" opacity="0.55"/></g>`;
+  b += `<path d="${EGG_PATH}" fill="none" stroke="${INK}" stroke-width="3.2"/>`;
+  b += `<ellipse cx="100" cy="124" rx="9" ry="16" fill="#fff" opacity="0.8" transform="rotate(24 100 124)"/>`;
+  for (let i = 0; i < cracks; i++) b += `<path d="${CRACKS[i]}" fill="none" stroke="${INK}" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"/>`;
+  if (cracks >= 2) {
+    // a little opening, with two eyes peeking out (they mirror your blinks)
+    b += `<path d="M98 160 q22 -12 44 0 q-22 14 -44 0 z" fill="#3b2f4f" stroke="${INK}" stroke-width="2.4"/>`;
+    const big = expr === 'wow' ? 1.35 : 1;
+    b += `<g class="m-eyes">${[110, 130].map((x) => (live.eyesClosed
+      ? `<path d="M${x - 4} 161 h8" stroke="#fff7a8" stroke-width="2.4" stroke-linecap="round"/>`
+      : `<ellipse cx="${x}" cy="160" rx="${f1(3.6 * big)}" ry="${f1(4.4 * big)}" fill="#fff7a8"/><circle cx="${x - 1}" cy="158.5" r="1.3" fill="#fff"/>`)).join('')}</g>`;
+  }
+  let fx = '';
+  if (glee) fx += star(172, 104, 7, '#ffe27a', `stroke="${INK}" stroke-width="1.2"`) + star(64, 124, 5, '#ffb3c9', `stroke="${INK}" stroke-width="1.2"`) + heart(178, 150, 0.9, '#ffb3c9');
+  if (egg?.hatching) fx += star(120, 84, 9, '#fff3a0', `stroke="${INK}" stroke-width="1.2"`);
+  return `${back}<g class="egg-body"><g transform="translate(120 222) scale(1 ${sy.toFixed(3)}) translate(-120 -222)">${b}</g>${fx}</g>`;
+}
+
 /**
  * Draw the monster.
  * @param {object} o
@@ -184,8 +241,9 @@ const SIZE = { egg: 0.6, blob: 0.72, hatchling: 0.84, sprite: 0.94, final: 1.04 
  * @param {object} [o.live]     { face: 'flat'|'grin'|'wow', eyesClosed, breath: 0..1 | null, talking, talkOpen }
  * @param {boolean} [o.standalone] add xmlns/size for use as an image
  * @param {boolean} [o.backdrop]   draw a soft pastel circle behind it (receipt)
+ * @param {object} [o.egg]      eggState() for the egg stage ({ cracks, hatching })
  */
-export function monsterSvg({ stage, traits, live = {}, standalone = false, backdrop = false, uid = 'm' }) {
+export function monsterSvg({ stage, traits, live = {}, standalone = false, backdrop = false, uid = 'm', egg = null }) {
   const t = traits;
   const key = SIZE[stage] ? stage : 'egg';
   const s = SIZE[key];
@@ -198,8 +256,14 @@ export function monsterSvg({ stage, traits, live = {}, standalone = false, backd
   const cy = floor - 10 * s - ry;
   const body = t.body || DEFAULT_BODY;
   const shade = darker(body);
-  const traitScale = lvl >= 2 ? 0.55 + 0.15 * (lvl - 2) : 0; // diet traits show from Joyling up
+  const traitScale = lvl >= 2 ? 0.55 + 0.15 * (lvl - 2) : 0; // diet traits show from Growing Monster up
   const head = standalone ? 'xmlns="http://www.w3.org/2000/svg" width="240" height="240"' : '';
+  if (key === 'egg') {
+    const pad = backdrop ? `<circle cx="120" cy="124" r="112" fill="#fff0f6"/><circle cx="120" cy="124" r="96" fill="#f3edff"/>` : '';
+    return `<svg ${head} viewBox="0 0 240 240" class="monster-svg egg-svg" role="img" aria-label="Smile Monster, a mysterious egg">
+    ${pad}<g id="${uid}-body">${eggSvg({ traits: t, live, egg, uid, expr, sy })}</g>
+  </svg>`;
+  }
 
   let back = '';
   if (backdrop) back += `<circle cx="120" cy="124" r="112" fill="#fff0f6"/><circle cx="120" cy="124" r="96" fill="#f3edff"/>`;
@@ -208,7 +272,7 @@ export function monsterSvg({ stage, traits, live = {}, standalone = false, backd
   const glow = Math.max(t.glow && traitScale ? t.glow : 0, lvl === 4 ? 1 : 0);
   if (glow) back += `<circle cx="${cx}" cy="${f1(cy)}" r="${f1(rx + 14 + glow * 7)}" fill="#fff3a8" opacity="${f1(0.18 + glow * 0.1)}"/>`;
 
-  // sparkle wings from Sparkler up
+  // sparkle wings from Happy Monster up
   if (lvl >= 3) {
     for (const side of [-1, 1]) {
       const wx = cx + side * rx * 0.92, wy = cy - ry * 0.15;
@@ -280,15 +344,15 @@ export function monsterSvg({ stage, traits, live = {}, standalone = false, backd
   b += mouth({ cx, cy: ey + ery + 9 * s, expr, s });
 
   // growing-up accessories, same character every level
-  if (key === 'egg') {
-    // a little eggshell cap from hatching
+  if (key === 'blob') {
+    // a little eggshell cap, it only just hatched
     b += `<path d="M${f1(cx - rx * 0.62)} ${f1(cy - ry * 0.66)} q${f1(rx * 0.62)} ${f1(-ry * 0.72)} ${f1(rx * 1.24)} 0 l${f1(-rx * 0.2)} ${f1(ry * 0.14)} l${f1(-rx * 0.2)} ${f1(-ry * 0.14)} l${f1(-rx * 0.22)} ${f1(ry * 0.16)} l${f1(-rx * 0.22)} ${f1(-ry * 0.16)} l${f1(-rx * 0.2)} ${f1(ry * 0.14)} z" fill="#fffaf0" stroke="${INK}" stroke-width="2.6" stroke-linejoin="round"/>`;
-  } else if (key === 'blob' || key === 'hatchling') {
-    // a sprout that gets a bud as it grows
+  } else if (key === 'hatchling') {
+    // a sprout with a little bud
     const top = cy - ry;
     b += `<path d="M${cx} ${f1(top + 2)} q-2 ${f1(-14 * s)} ${f1(4 * s)} ${f1(-22 * s)}" fill="none" stroke="#5fae6e" stroke-width="3" stroke-linecap="round"/>`;
     b += `<path d="M${f1(cx + 3 * s)} ${f1(top - 16 * s)} q${f1(14 * s)} ${f1(-10 * s)} ${f1(20 * s)} ${f1(2 * s)} q${f1(-12 * s)} ${f1(6 * s)} ${f1(-20 * s)} ${f1(-2 * s)} z" fill="#9ee0a8" stroke="${INK}" stroke-width="2"/>`;
-    if (key === 'hatchling') b += `<circle cx="${f1(cx + 4 * s)}" cy="${f1(top - 24 * s)}" r="${f1(6 * s)}" fill="#ffb3c9" stroke="${INK}" stroke-width="2"/>`;
+    b += `<circle cx="${f1(cx + 4 * s)}" cy="${f1(top - 24 * s)}" r="${f1(6 * s)}" fill="#ffb3c9" stroke="${INK}" stroke-width="2"/>`;
   } else if (key === 'final') {
     // flower crown
     const top = cy - ry * 0.9;
