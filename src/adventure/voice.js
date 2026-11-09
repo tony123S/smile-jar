@@ -16,7 +16,8 @@ export const VOICE = Object.freeze({
 
 /** Pick a friendly English voice from what the computer has, or null if there are none. */
 export function pickVoice(voices) {
-  const en = (voices || []).filter((v) => /^en/i.test(v.lang || ''));
+  // Only voices that run on this computer (localService), so no text is sent to an online voice.
+  const en = (voices || []).filter((v) => /^en/i.test(v.lang || '') && v.localService !== false);
   if (!en.length) return null;
   const nice = en.find((v) => /female|samantha|karen|zira|aria|jenny|google us english|moira|tessa/i.test(v.name));
   return nice || en.find((v) => v.default) || en[0];

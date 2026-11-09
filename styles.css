@@ -386,7 +386,8 @@ dialog.privacy { max-width: 580px; padding: 24px; }
 .howto { max-width: 680px; padding: 26px; text-align: center; }
 .howto[open] { animation: pop .35s cubic-bezier(.3, 1.6, .5, 1); }
 .howto h2 { font-size: 26px; color: #5a4396; }
-.howto-steps { list-style: none; padding: 0; margin: 10px 0; display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; }
+.howto-steps { list-style: none; padding: 0; margin: 10px 0; display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px; }
+@media (max-width: 760px) { .howto-steps { grid-template-columns: repeat(2, 1fr); } }
 .howto-steps li { display: grid; gap: 6px; padding: 16px 12px; border-radius: 22px; background: linear-gradient(180deg, #f6f1ff, #fff); border: 3px solid var(--lavender); }
 .howto-steps li:nth-child(2) { border-color: var(--pink); background: linear-gradient(180deg, #fff2f7, #fff); }
 .howto-steps li:nth-child(3) { border-color: var(--mint); background: linear-gradient(180deg, #f0fff5, #fff); }
@@ -525,3 +526,9 @@ dialog.privacy { max-width: 580px; padding: 24px; }
 .level-chip .lc-stars { font-size: 13px; color: #f4a72a; font-weight: 800; }
 .level-chip.locked { opacity: .55; cursor: not-allowed; background: #f3f0f8; }
 .level-chip.locked .lc-n { background: #ddd6ea; }
+.charity-end { display: flex; gap: 16px; align-items: center; text-align: left; margin: 14px 0; padding: 14px 18px; border-radius: 18px; background: linear-gradient(135deg, #fff0f6, #eef7ff); border: 2.5px solid var(--ink, #4a3b5c); }
+.charity-end-momo { width: 110px; flex: none; }
+.charity-end-momo svg { width: 100%; height: auto; display: block; }
+.charity-end h3 { margin: 0 0 6px; }
+.charity-end p { margin: 0; line-height: 1.45; }
+@media (max-width: 640px) { .charity-end { flex-direction: column; text-align: center; } }

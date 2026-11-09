@@ -284,6 +284,7 @@ test('no voices, no synth or voice off: nothing is spoken (the bubble still show
   assert.equal(v.say('hi'), false);
   assert.equal(synth.spoken.length, 0);
   assert.equal(pickVoice([{ name: 'Thomas', lang: 'fr-FR' }]), null, 'only English voices, since the lines are English');
+  assert.equal(pickVoice([{ name: 'Google US English', lang: 'en-US', localService: false }]), null, 'never an online voice');
 });
 
 test('the adventure has its own level, boss and victory music', () => {
