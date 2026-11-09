@@ -1,4 +1,4 @@
-# Smile Monster 👾🌈
+# Smile Monster: The Egg of Joy 🥚✨
 
 ![Smile Monster cover](docs/cover.png)
 
@@ -10,13 +10,18 @@ Built for the DEV Presage SmartSpectra SDK Challenge (`#presagechallenge`).
 
 > Smile Monster is a game. It does not diagnose, treat or assess anyone's health or emotional state. It tracks pledges; it never processes payments.
 
+| | |
+| --- | --- |
+| ![The egg almost hatching](docs/screenshots/05-egg-almost-hatching.png) | ![Growth screen after hatching](docs/screenshots/07-growth-egg-hatched.png) |
+| ![Extra happy while you keep smiling](docs/screenshots/09-gameplay-extra-happy.png) | ![The fully restored world](docs/screenshots/10-world-restored.png) |
+
 *Screenshots in `docs/screenshots` were taken with `npm run simulate` (note the yellow banner), because the build machine has no camera.*
 
 ## The game
 
-**Opening story.** Four short full-screen scenes tell the story: a world that lost its smiles, a mysterious egg in the last grey meadow, a first smile that makes it glow and wiggle, and the egg starting to crack. There's a **Continue** button, **Skip story**, and a final **LET'S BEGIN!**. The story plays once (it's remembered on this device) and can be replayed from the home screen or settings. The camera is never on during the story.
+**Opening story.** Four short full-screen scenes tell the story: a world that lost its smiles, a mysterious egg in the last grey meadow, a first smile that makes it glow and wiggle, and the egg starting to crack. There's a **Continue** button, **Skip story**, and a final **LET'S BEGIN!**. The story plays once (it's remembered on this device) and can be replayed from My world. The camera is never on during the story.
 
-**Five chapters, five levels.** Every qualifying smile gives **+10 XP**. The monster is the same round, squishy character at every level; it just grows up:
+**Five chapters, five levels.** It starts as an egg: each of your first three smiles fills its happiness bar and adds a crack, and the third one hatches it. After that every qualifying smile gives **+10 XP**, and it's the same round, squishy character at every level; it just grows up:
 
 | Level | Chapter | Smiles | The monster | The world |
 | --- | --- | --- | --- | --- |
@@ -44,13 +49,13 @@ Each level-up plays an evolution animation, a fanfare that's different for every
 
 **No flickering faces.** The live scores jump around, so the monster's face goes through a small mood filter (`src/mood.js`). It smooths the scores, only changes face when an expression has held for about a fifth of a second, keeps each face on screen for at least half a second, and uses separate on and off thresholds so a score hovering at the edge can't make it flicker. Only happy and surprised are mirrored. The SDK also reports sad, angry and others, but they aren't used until they can be checked on real faces. Faces take priority over the monster's own idle animation.
 
-For judges and developers, a **signal check** panel (turn it on in My world → Settings → "Show the signal check during games") shows which signals are actually arriving (`live`), stopped (`paused`), never seen (`waiting`) or not requested (`off`). If a signal never arrives, the monster simply doesn't use it. On the home screen the monster has its own idle bounce and blink; those are animations, not signals.
+For judges and developers, a **signal check** panel (turn it on in My world → Settings → "Show the signal check during games") shows which signals are actually arriving (`live`), stopped (`paused`), never seen (`waiting`) or not requested (`off`). If a signal never arrives, the monster simply doesn't use it. Walking, sniffing, napping and the home-screen bounce are animations, not signals.
 
 **Easy to pick up.** The home screen shows one goal ("Press PLAY and smile 3 times to hatch the egg"). Before the first game a 3-step **How to play** guide explains it: read the joke, smile for real, your monster grows. In a game a big banner says what to do, and the HUD shows how many smiles until the monster grows.
 
 **One simple game.** Press PLAY, read the jokes and happy facts, and smile when something makes you happy.
 
-**Music and sound.** Original background music is generated live in the app with Web Audio (no audio files): a dreamy track for the story, soft piano and bells at home, an upbeat track for games, and an uplifting one once the world is fully restored. It loops seamlessly, starts only after you interact with the app, crossfades between screens and pauses when the window is hidden. Smiles never restart it. Sound effects cover smiles, the monster's happy squeak, XP, blooming flowers, level-ups, evolution and chapter completion. **Music** and **Sounds** have separate on/off buttons, plus a volume slider.
+**Music and sound.** Original background music is generated live in the app with Web Audio (no audio files): a dreamy track for the story, soft piano and bells at home, an upbeat track for games, and an uplifting one once the world is fully restored. It loops seamlessly, starts only after you interact with the app, crossfades between screens and pauses when the window is hidden. Smiles never restart it. Sound effects cover the egg's wobble, cracking and hatching, smiles, the monster's happy squeak, XP, blooming flowers, level-ups, evolution and chapter completion. **Music** and **Sounds** have separate on/off buttons, plus a volume slider.
 
 ## Real-world impact
 
@@ -76,7 +81,7 @@ camera ──► SmartSpectra SDK (renderer captures frames, main process analys
    face.expression[] ──► SmileDetector ──► +1 qualifying smile ──► pledges.js (caps)
           │                                    │
           │                                    └─► HumourModel.creditSmile() ──► monster diet ──► traits
-          ├─► mascotFace()      (grin / wow)  ─┐
+          ├─► MoodMirror (smoothed face) ─────┐   Wanderer (walk / sniff / nap)
    face.blinking[]  ──► BlinkTracker          ├─► monsterSvg() redrawn once per frame
    face.talking[]   ──► talkingNow()          │
    breathing trace  ──► BreathNormalizer     ─┘
@@ -124,7 +129,7 @@ Breathing needs your chest in view (sit back a little). Pulse needs an API key p
 
 | Command | What it does |
 | --- | --- |
-| `npm test` | Unit tests: smile detector, pledges and confirmed donations, monster levels, XP and traits, world restoration, music loops, signal tracking, humour model, moving saves from earlier versions safely |
+| `npm test` | Unit tests: smile detector, pledges and confirmed donations, monster levels, XP and traits, world restoration, music loops, signal tracking, humour model, the egg, face smoothing, the monster's behaviour, moving saves from earlier versions safely |
 | `npm run simulate` | Launches the UI with a **fake** signal for UI work (Space = smile, G = big grin, W = surprise, B = blink, T = talk, breathing is a sine wave). A yellow banner says so on every screen. The real build never uses it |
 | `npm run dist:mac` / `dist:win` / `dist:linux` | Packaged installers via electron-builder |
 
@@ -147,13 +152,13 @@ Breathing needs your chest in view (sit back a little). Pulse needs an API key p
 
 **What is stored.** One record in the app's local storage on this device (`smilemonster.v1`; a save from an earlier version of the app is moved to this name the first time it opens, and the old copy is removed only after the move worked): whether the opening story has been seen; the consent version and time; settings (game length, breathing mirror, pulse, music, sound effects, volume, diagnostics); the cause and goal; sponsor names, rates, caps, colours, snack jokes, snack-smile counts and the confirmed donation amounts the user typed; the monster (qualifying smiles, from which XP and level are worked out; smiles per joke category; surprise-moment count; snack smiles per sponsor); names of retired monsters; and per-game totals (end time, duration, number of smiles, pledged amount).
 
-**What is never stored or sent by Smile Monster.** Video, images, screenshots, face landmarks, expression scores, blink, talking or breathing data, pulse values, or any other biometric data. The blink count on the summary is a number for that screen only. The in-game humour model is discarded when the game ends. A video clip the user plays is opened from their disk through a temporary local URL and never copied or uploaded.
+**What is never stored or sent by Smile Monster.** Video, images, screenshots, face landmarks, expression scores, blink, talking or breathing data, pulse values, or any other biometric data. The blink count on the Growth screen is a number for that screen only. The in-game humour model and the mood filter are discarded when the game ends.
 
 **Smile Receipt and CSV.** Both are generated on the device only when the user clicks to save or export. The receipt has the monster drawing, totals, sponsor names and amounts, and the charity, never a camera image. The CSV has the cause, sponsor names, rates, caps, pledged and confirmed amounts, snack smile counts, and session dates and smile counts. They leave the device only if the user sends them to someone.
 
 **Sharing.** None. Smile Monster has no backend, no account, no analytics and no ads. The music, sounds and artwork are generated inside the app, so nothing is downloaded for them.
 
-**Retention and deletion.** Local data is kept until the user deletes it. **Privacy & data → Delete all my data** erases the whole record, including consent, and starts over from the story. **Don't save this game** on the summary removes that game and undoes what it fed the monster. **Start a new monster** resets the monster but keeps pledges. Uninstalling the app (and clearing its app-data folder) also removes everything.
+**Retention and deletion.** Local data is kept until the user deletes it. **Privacy & data → Delete all my data** erases the whole record, including consent, and starts over from the story. **Don't save this game** on the Growth screen removes that game and undoes what it fed the monster. **Start a new monster** resets the monster but keeps pledges. Uninstalling the app (and clearing its app-data folder) also removes everything.
 
 **SDK network use and telemetry.** The SmartSpectra SDK connects to Presage over TLS to validate the API key and meter usage. It can also send an aggregate, per-session diagnostic summary (SDK version, OS/device model, frame-rate and quality counters, error codes) that by Presage's documentation contains no video, no measured values and no user or device identifiers ([SDK Telemetry & Privacy](https://github.com/Presage-Security/SmartSpectra/blob/main/docs/telemetry-and-privacy.md)). The SDK turns this on by default; **Smile Monster turns it off** (`enableTelemetry: false`) unless the user opts in on the consent screen or in Privacy & data. See [Presage's Privacy Policy](https://api.physiology.presagetech.com/privacypolicy).
 
@@ -166,7 +171,9 @@ Breathing needs your chest in view (sit back a little). Pulse needs an API key p
 ```
 main.js                 Electron main: window, SmartSpectra IPC bridge, camera-only permission
 renderer.js             Screens (story, consent, home, gameplay, growth, my world), SmartSpectra wiring, live mirroring
-src/monster.js          Five levels, XP, traits from the joke diet, names, the monster SVG
+src/monster.js          Five levels, the egg, XP, traits from the joke diet, names, the monster SVG
+src/mood.js             Smooths live expression scores into a calm face (no flicker), wink, extra happy
+src/behaviour.js        The monster's own life: idle, walk, sniff flowers, nap, celebrate
 src/world.js            The world SVG, from grey (tier 0) to fully restored (tier 5)
 src/music.js            Original looping background music (Web Audio scheduler)
 src/audio.js            Shared audio context with separate music and sound-effect buses

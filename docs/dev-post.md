@@ -1,5 +1,5 @@
 ---
-title: Smile Monster - your smiles help a little monster bring its world back to life
+title: Smile Monster - The Egg of Joy: your smile changes two worlds
 published: false
 tags: presagechallenge, devchallenge, electron, javascript
 cover_image:
@@ -22,7 +22,7 @@ cover_image:
 
 > A mysterious egg is waiting in a world without happiness. Every smile helps it hatch, and helps the little monster inside bring that world back to life.
 
-**Smile Monster** is a small, cute story game for your laptop. You open it and get a short story: a colourful world that lost all its smiles, and a mysterious egg waiting in the last grey meadow. Then it's your turn. Every real smile the SmartSpectra SDK sees through your camera gives the monster happiness energy, and slowly its grey world gets its colours back.
+**Smile Monster: The Egg of Joy** is a small, cute story game for your laptop. You open it and get a short story: a colourful world that lost all its smiles, and a mysterious egg waiting in the last grey meadow. Then it's your turn. Every real smile the SmartSpectra SDK sees through your camera gives the monster happiness energy, and slowly its grey world gets its colours back.
 
 There are five chapters:
 
@@ -32,16 +32,23 @@ There are five chapters:
 4. **Spread the Happiness** - a Happy Monster with sparkle wings, and the sky fills with colour and a rainbow.
 5. **The World of Smiles** - the Guardian of Joy, with a flower crown, a soft glow, mushroom houses and floating hearts.
 
-Once it hatches it has a little life of its own: it waddles around, sniffs the flowers, and falls asleep if you ignore it. When you smile it stops and turns to look at you. It's always the same round, squishy monster with big sparkly eyes and tiny arms, it just grows up. Every smile is +10 XP, and every level-up has its own little animation and fanfare.
+![The five levels, from egg to Guardian of Joy](https://raw.githubusercontent.com/tony123S/smile-jar/main/docs/screenshots/12-five-levels.png)
+
+![The egg about to hatch during a game](https://raw.githubusercontent.com/tony123S/smile-jar/main/docs/screenshots/05-egg-almost-hatching.png)
+
+*(These screenshots are from simulate mode, which is why there's a yellow banner.)*
+
+Once it hatches it has a little life of its own: it waddles around, sniffs the flowers, and falls asleep if you ignore it. When you smile it stops and turns to look at you. It's always the same round, squishy monster with big sparkly eyes and tiny arms, it just grows up. After hatching, every smile is +10 XP, and every level-up has its own little animation and fanfare.
 
 What it looks like also depends on what made you smile. Puns give it tiny horns, animal facts give it fluffy ears, memories make it glow, daydream cards give it star freckles. So your monster might be a "Fluffy Furbun" and your friend's a "Dreamy Starbean".
 
 And there's a real-world side too. Walking can donate your steps, recycling can earn you points, so why can't a smile raise money? Friends or family can pledge a few cents per smile to a charity, with a cap so nobody gets a surprise bill. Each smile counts twice: once for the monster's world, and once for the charity.
 
-It's meant to be easy: the home screen shows one goal, a 3-step "How to play" guide shows up before your first game, and during a game a big banner just says "Smile if this makes you happy!".
+It's meant to be easy. There are only four screens: Home, the game, a Growth screen after each game (with a before and after picture when it hatched or grew), and My world, where you see the chapters, the charity and the settings. The home screen shows one goal, a 3-step "How to play" guide shows up before your first game, and during a game a big banner just says "Smile if this makes you happy!".
 
 Other bits:
 
+- **Sounds**: the egg wobbles, cracks and hatches with its own sounds, and every level-up has its own fanfare.
 - **Sponsor Snacks**: sponsors can add their own joke. The monster serves it as "A snack from Grandma Lee", and if it gets you, Grandma gets the credit and a heart on the monster.
 - **Music**: original background music made right in the app, a dreamy tune for the story, soft piano and bells at home, something bouncy while you play. Music, sounds and volume can be turned on and off separately.
 - **Smile Receipt**: a picture with your monster, your smiles, each sponsor's pledge and the charity, to send to your sponsors. Never your face.
@@ -95,7 +102,7 @@ I'm entering both: **Most Creative or Delightful Use** and **Best Thoughtful Rea
 
 ### Most Creative or Delightful Use
 
-Most camera demos measure you. Here your face *brings a world back to life*. The monster blinks when you blink, talks when you talk and breathes with you, so it feels like it's really looking at you. It grows into a different creature depending on your sense of humour, and you can watch grey hills turn into flowers, trees and rainbows because you smiled. I wanted the first reaction to be "awww, I want to help it".
+Most camera demos measure you. Here your face *hatches an egg and brings a world back to life*. The monster blinks when you blink (and sometimes winks), talks when you talk and breathes with you, so it feels like it's really looking at you. It grows into a different creature depending on your sense of humour, and you can watch grey hills turn into flowers, trees and rainbows because you smiled. I wanted the first reaction to be "awww, I want to help it".
 
 ### Best Thoughtful Real-World Use
 
@@ -112,6 +119,7 @@ I tried to keep the money part honest:
 
 ## Consent and Data Handling
 
+- **Not your face on screen:** the camera preview is shown to you while you play, but nothing is saved, and the receipt is a drawing of the monster, never your face.
 - **Camera consent:** after the story, a consent screen explains how the camera is used, and you have to tick a box before you can play. The camera is never on during the story, the consent screen or the home screen. It only turns on when you press PLAY and turns off when the game ends. A "Live, not recorded" label shows while it's on. The app only asks for the camera, never the microphone. (Talking is detected from the video.)
 - **Only with people who agree:** the consent screen asks you to only count your own smiles, or smiles of people who know and agree. It must not be used to watch anyone secretly.
 - **What's processed:** camera frames go to the SmartSpectra SDK inside the app, get analysed on your computer, and are thrown away. Smile Monster reads the expression scores, blink and talking flags, the breathing trace (if on) and pulse (if on), and only uses them in memory to animate the monster and count smiles.
@@ -119,7 +127,7 @@ I tried to keep the money part honest:
 - **What's never saved:** video, photos, face data, expression scores, blink, talking or breathing data, or pulse values.
 - **What leaves your computer:** nothing, unless you save the Smile Receipt or the pledge CSV and send it to someone yourself. There's no server, account, analytics or ads. The music and art are made inside the app, so nothing is downloaded for them either.
 - **SDK telemetry:** the SDK connects to Presage to check the API key. It can also send an anonymous diagnostics summary (no video, no measurements, no identifiers, according to Presage's docs). That's on by default in the SDK, but Smile Monster turns it off unless you choose to share it.
-- **Keeping and deleting:** your data stays until you delete it. "Delete all my data" in Privacy & data wipes everything, including your consent. You can also throw away one game from its summary screen, which also undoes what it gave the monster.
+- **Keeping and deleting:** your data stays until you delete it. "Delete all my data" in Privacy & data wipes everything, including your consent. You can also throw away one game from its Growth screen, which also undoes what it gave the monster.
 - **AI services:** none. The "learns your humour" bit is simple counting inside the app. The SDK's optional LLM Insights feature isn't used.
 - **Not medical:** no diagnosis, no treatment, no health or emotion claims. It's just a game.
 
