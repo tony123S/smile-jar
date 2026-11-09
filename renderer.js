@@ -41,6 +41,7 @@ import { worldSvg } from './src/world.js';
 import { SIGNALS, SignalMonitor, BlinkTracker, talkingNow, BreathNormalizer } from './src/signals.js';
 import { ExpressionControls, controlScheme } from './src/adventure/controls.js';
 import { AdventureLevel } from './src/adventure/engine.js';
+import { LINES } from './src/adventure/lines.js';
 import { LEVELS, isPlayable, levelById, recordLevel } from './src/adventure/levels.js';
 import { sceneSvg, thingSvg, bossSvg } from './src/adventure/scenes.js';
 
@@ -153,6 +154,8 @@ $('btn-voice').addEventListener('click', () => setSetting('voice', state.setting
 document.addEventListener('visibilitychange', () => {
   // Pause the music while the window is hidden; it resumes where the screen wants it.
   music.request(document.hidden ? null : musicFor(currentView));
+  // A level waits too, so nothing times out while you're in another window.
+  if (document.hidden && session?.adv) session.adv.game.setPaused(true, Date.now());
 });
 
 // ---------------------------------------------------------------- monster
@@ -1163,6 +1166,16 @@ function onAdvEvent(e, now) {
   const a = s.adv;
   const thing = $('adv-thing');
   switch (e.type) {
+    case 'pause':
+      // Your face left the camera (or the window was hidden): the level waits for you.
+      $('adv-away').hidden = !e.paused;
+      if (e.paused) { $('adv-prompt').hidden = true; if (!document.hidden) advSay(LINES.away); }
+      else {
+        if (a.awaySaid) advSay(LINES.back);
+        if (a.game.phase === 'challenge') $('adv-prompt').hidden = false;
+      }
+      a.awaySaid = e.paused && !document.hidden;
+      break;
     case 'say':
       advSay(e.text);
       // A real smile while (or just after) the sponsor's joke is up gives that sponsor the credit.
@@ -1258,6 +1271,10 @@ function advFrame() {
   // If the SDK isn't sending blinks (after a few seconds of face data), dodging uses a surprised face.
   const blinkLive = st.blinking.live || !st.expressions.live || now - s.startedAt < 6000;
   const scheme = controlScheme({ blinkLive });
+  // No face for a moment (or the window is hidden): hold the level instead of letting it time out.
+  const faceGone = a.controls.lastSampleAt > -Infinity && now - a.controls.lastSampleAt > a.controls.o.lostMs;
+  const ending = a.game.phase === 'outro' || a.game.phase === 'complete';
+  a.game.setPaused((faceGone || document.hidden) && !ending, now);
   const input = { actions: a.pending.splice(0), calmMs: a.controls.calmFor(now), scheme };
   for (const e of a.game.tick(now, input)) onAdvEvent(e, now);
 
@@ -1307,7 +1324,7 @@ function startAdventure(level, now) {
   session.advBefore = JSON.parse(JSON.stringify(state.adventure));
   momoKey = '';
   $('adv-scene').innerHTML = sceneSvg(level.id);
-  for (const id of ['adv-thing', 'adv-boss', 'adv-prompt', 'adv-done', 'adv-speech', 'adv-sneak', 'adv-backup']) $(id).hidden = true;
+  for (const id of ['adv-thing', 'adv-boss', 'adv-prompt', 'adv-done', 'adv-speech', 'adv-sneak', 'adv-backup', 'adv-away']) $(id).hidden = true;
   $('adv-boss').className = 'adv-boss';
   $('adv').classList.remove('boss-fight', 'is-running');
   for (const e of a.game.tick(now)) onAdvEvent(e, now);

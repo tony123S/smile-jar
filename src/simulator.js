@@ -1,7 +1,7 @@
 // simulator.js: UI-only stand-in for the SmartSpectra SDK, used by `npm run simulate`
 // and the browser preview. It emits decoded-Metrics-shaped objects so the rest of the
 // app runs unchanged. Hold Space to "smile", G for a big grin, W for surprise, T to "talk",
-// B to blink. It also fakes a slow breathing trace. The app shows a SIMULATED banner
+// B to blink, H to step out of view (no face). It also fakes a slow breathing trace. The app shows a SIMULATED banner
 // whenever this is active; it is never used in the real build.
 
 import { ExpressionType } from './smile-detector.js';
@@ -18,6 +18,7 @@ export class SimulatedSDK {
     this.surprised = false;
     this.talking = false;
     this.blinking = false;
+    this.away = false;
     this.t0 = Date.now();
     this.nextAutoBlink = Date.now() + 2500;
     this.onKey = (e) => {
@@ -28,6 +29,7 @@ export class SimulatedSDK {
       if (e.code === 'KeyW') this.surprised = down; // hold W for a jaw-drop
       if (e.code === 'KeyT') this.talking = down;   // hold T to "talk"
       if (e.code === 'KeyB') this.blinking = down;  // hold B to blink
+      if (e.code === 'KeyH') this.away = down;      // hold H to step out of view (no face at all)
     };
   }
 
@@ -71,6 +73,7 @@ export class SimulatedSDK {
     if (this.requestPulse) {
       metrics.cardio = { pulseRate: [{ value: 68 + Math.sin(now / 4e6) * 4, timestamp: now, stable: true }] };
     }
+    if (this.away) { delete metrics.face; delete metrics.breathing; } // like a real camera with nobody in it
     this.emit('metrics', metrics, now);
   }
 

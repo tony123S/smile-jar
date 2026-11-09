@@ -25,8 +25,8 @@ export const ENGINE = Object.freeze({
   oopsMs: 1600,        // the tumble and getting back up
   bossIntroMs: 3600,
   outroMs: 4200,
-  earlyMs: 500,
-  sneakHoldMs: 900,    // the straight face has to be held this long inside the window        // a face made just before the window opens still counts
+  earlyMs: 500,        // a face made just before the window opens still counts
+  sneakHoldMs: 900,    // the straight face has to be held this long inside the window
   points: { step: 100, firstTry: 50, boss: 200 },
 });
 
@@ -54,12 +54,32 @@ export class AdventureLevel {
     this.lastResult = null;
     this.events = [];
     this.recent = {};    // when each action last fired, for the early-face grace
+    this.pausedAt = null; // set while the game is on hold (face out of view, window hidden)
     this.enter('intro', now, this.o.introLineMs);
     this.say(this.introLines[0]);
   }
 
   get step() { return this.steps[this.i] || null; }
   get done() { return this.phase === 'complete'; }
+  get paused() { return this.pausedAt != null; }
+
+  /**
+   * Put the game on hold, or carry on. While on hold the clock stands still, so stepping away
+   * from the camera (or hiding the window) never runs a challenge out and costs a star.
+   */
+  setPaused(paused, now) {
+    if (paused && this.pausedAt == null) {
+      this.pausedAt = now;
+      this.events.push({ type: 'pause', paused: true });
+    } else if (!paused && this.pausedAt != null) {
+      const d = Math.max(0, now - this.pausedAt);
+      this.phaseAt += d;
+      if (this.phaseEnds !== Infinity) this.phaseEnds += d;
+      this.pausedAt = null;
+      this.recent = {}; // faces from before the break don't count
+      this.events.push({ type: 'pause', paused: false });
+    }
+  }
 
   say(text) { if (text) { this.lastLine = text; this.events.push({ type: 'say', text }); } }
 
@@ -115,6 +135,7 @@ export class AdventureLevel {
 
   tick(now, input = {}) {
     const scheme = input.scheme || controlScheme();
+    if (this.paused) { const out = this.events; this.events = []; return out; }
     this.lastNow = now;
     for (const a of input.actions || []) this.recent[a] = now;
     // A challenge can be won on this very tick, before any timeout is looked at.
@@ -195,7 +216,7 @@ export class AdventureLevel {
   view(now) {
     const step = this.step;
     const span = this.phaseEnds === Infinity ? 1 : Math.max(1, this.phaseEnds - this.phaseAt);
-    const t = Math.max(0, Math.min(1, (now - this.phaseAt) / span));
+    const t = Math.max(0, Math.min(1, ((this.pausedAt ?? now) - this.phaseAt) / span));
     const pose = {
       intro: 'idle', run: 'run', bossIntro: 'idle', outro: 'dance', complete: 'dance', oops: 'oops',
       challenge: step?.need === 'sneak' ? 'sneak' : 'ready',
@@ -203,6 +224,7 @@ export class AdventureLevel {
     }[this.phase] || 'idle';
     return {
       phase: this.phase,
+      paused: this.paused,
       t,
       pose,
       step,
