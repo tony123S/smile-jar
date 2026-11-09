@@ -29,7 +29,8 @@ import { JOY_REEL } from './src/joy-reel.js';
 import { HumourModel, personaFor } from './src/humour.js';
 import { MonsterVoice } from './src/monster-voice.js';
 import { sfx } from './src/sounds.js';
-import { unlockAudio, setAudioPrefs } from './src/audio.js';
+import { unlockAudio, setAudioPrefs, holdDuck } from './src/audio.js';
+import { MomoVoice } from './src/adventure/voice.js';
 import { music } from './src/music.js';
 import { drawReceipt } from './src/receipt.js';
 import { SimulatedSDK } from './src/simulator.js';
@@ -61,7 +62,7 @@ let currentView = null;
 
 function musicFor(view) {
   if (view === 'story') return 'story';
-  if (view === 'session') return 'play';
+  if (view === 'session') return session?.adv ? 'adventure' : 'play';
   const finalForm = stageFor(state.monster.smiles).key === 'final';
   return finalForm ? 'final' : 'home';
 }
@@ -100,8 +101,20 @@ const plural = (n, one, many) => `${n} ${n === 1 ? one : many}`;
 
 // ---------------------------------------------------------------- audio
 // Music and sound start only after the player has interacted with the app.
+const momoVoice = new MomoVoice({
+  synth: globalThis.speechSynthesis || null,
+  Utterance: globalThis.SpeechSynthesisUtterance || null,
+  onTalk: (talking) => holdDuck(talking), // the music dips while Momo talks
+});
+
 function applyAudioSettings() {
   const st = state.settings;
+  momoVoice.setEnabled(st.voice !== false);
+  momoVoice.setVolume(Number(st.volume ?? 0.7));
+  const vBtn = $('btn-voice');
+  vBtn.setAttribute('aria-pressed', String(st.voice !== false));
+  vBtn.textContent = st.voice !== false ? '\u{1F4AC} Voice on' : '\u{1F4AC} Voice off';
+  $('f-voice').checked = st.voice !== false;
   setAudioPrefs({ volume: Number(st.volume ?? 0.7), music: st.music !== false, sfx: st.sound !== false });
   music.sync();
   const mBtn = $('btn-music'), sBtn = $('btn-sfx');
@@ -135,6 +148,8 @@ $('vol').addEventListener('input', (e) => setSetting('volume', Number(e.target.v
 $('f-volume').addEventListener('input', (e) => setSetting('volume', Number(e.target.value) / 100));
 $('f-music').addEventListener('change', (e) => setSetting('music', e.target.checked));
 $('f-sfx').addEventListener('change', (e) => setSetting('sound', e.target.checked));
+$('f-voice').addEventListener('change', (e) => setSetting('voice', e.target.checked));
+$('btn-voice').addEventListener('click', () => setSetting('voice', state.settings.voice === false));
 document.addEventListener('visibilitychange', () => {
   // Pause the music while the window is hidden; it resumes where the screen wants it.
   music.request(document.hidden ? null : musicFor(currentView));
@@ -1090,6 +1105,7 @@ function advSay(text) {
   b.classList.remove('say-in'); void b.offsetWidth; b.classList.add('say-in');
   clearTimeout(advSay.t);
   advSay.t = setTimeout(() => { b.hidden = true; }, Math.max(2600, text.length * 60));
+  momoVoice.say(text); // spoken too, when the computer has a voice and voice is on
 }
 
 function renderAdvHud() {
@@ -1173,6 +1189,8 @@ function onAdvEvent(e, now) {
       break;
     }
     case 'phase':
+      if (e.phase === 'bossIntro') music.request('boss');
+      if (e.phase === 'outro') music.request('victory');
       if (e.phase === 'outro') {
         $('adv-boss').className = 'adv-boss won';
         sfx.levelUp();
@@ -1348,7 +1366,7 @@ async function endSession() {
   const s = session;
   const now = Date.now();
   const signalStatus = s.signals.status(now);
-  if (s.adv) cancelAnimationFrame(s.adv.raf);
+  if (s.adv) { cancelAnimationFrame(s.adv.raf); momoVoice.stop(); }
   session = null;
   await stopSdk();
 

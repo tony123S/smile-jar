@@ -234,3 +234,64 @@ test('dodging still works without blinks, using a surprised face', () => {
   g.tick((t += 50), { actions: ['magic'], scheme });
   assert.equal(g.phase, 'success');
 });
+
+// ---- Momo's voice
+
+import { MomoVoice, pickVoice } from '../src/adventure/voice.js';
+import { TRACKS, notesAt, loopLength } from '../src/music.js';
+
+function fakeSynth(voices = [{ name: 'Samantha', lang: 'en-US', default: true }]) {
+  const spoken = [];
+  const synth = { spoken, getVoices: () => voices, speak: (u) => spoken.push(u), cancel: () => { synth.cancelled = (synth.cancelled || 0) + 1; } };
+  class Utterance { constructor(text) { this.text = text; } }
+  return { synth, Utterance };
+}
+
+test('Momo speaks one line at a time and keeps only the newest waiting line', () => {
+  const { synth, Utterance } = fakeSynth();
+  let t = 0;
+  const talk = [];
+  const v = new MomoVoice({ synth, Utterance, now: () => t, onTalk: (x) => talk.push(x) });
+  assert.equal(v.say('one'), true);
+  v.say('two');
+  v.say('three');
+  assert.deepEqual(synth.spoken.map((u) => u.text), ['one'], 'no overlapping voices');
+  t = 1000;
+  synth.spoken[0].onend();
+  assert.deepEqual(synth.spoken.map((u) => u.text), ['one', 'three'], '"two" was dropped for the newer line');
+  synth.spoken[1].onend();
+  assert.deepEqual(talk, [true, true, false], 'music dips while talking and comes back after');
+});
+
+test('a line that waited too long is skipped', () => {
+  const { synth, Utterance } = fakeSynth();
+  let t = 0;
+  const v = new MomoVoice({ synth, Utterance, now: () => t });
+  v.say('first');
+  v.say('late');
+  t = 10000;
+  synth.spoken[0].onend();
+  assert.equal(synth.spoken.length, 1);
+});
+
+test('no voices, no synth or voice off: nothing is spoken (the bubble still shows the line)', () => {
+  const none = fakeSynth([]);
+  assert.equal(new MomoVoice({ synth: none.synth, Utterance: none.Utterance }).say('hi'), false);
+  assert.equal(new MomoVoice().say('hi'), false);
+  const { synth, Utterance } = fakeSynth();
+  const v = new MomoVoice({ synth, Utterance });
+  v.setEnabled(false);
+  assert.equal(v.say('hi'), false);
+  assert.equal(synth.spoken.length, 0);
+  assert.equal(pickVoice([{ name: 'Thomas', lang: 'fr-FR' }]), null, 'only English voices, since the lines are English');
+});
+
+test('the adventure has its own level, boss and victory music', () => {
+  for (const name of ['adventure', 'boss', 'victory']) {
+    assert.ok(TRACKS[name]);
+    const len = loopLength(name);
+    assert.equal(TRACKS[name].melody.length, TRACKS[name].chords.length);
+    assert.ok(notesAt(name, 0).length > 0);
+    assert.deepEqual(notesAt(name, len), notesAt(name, 0), 'loops seamlessly');
+  }
+});
