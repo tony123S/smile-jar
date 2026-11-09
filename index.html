@@ -11,7 +11,7 @@
 </head>
 <body>
   <div id="sim-banner" class="sim-banner" hidden>
-    SIMULATED SIGNALS: the SmartSpectra SDK is not running in this build. Space = smile, G = big grin, W = surprise, B = blink, T = talk. Breathing is a fake sine wave.
+    SIMULATED SIGNALS: the SmartSpectra SDK is not running in this build. Space = smile, W = surprise, B = blink, no key = straight face, T = talk. Breathing is a fake sine wave.
   </div>
 
   <header class="topbar" id="topbar">
@@ -186,7 +186,7 @@
           <span>Goal ($)</span>
           <input id="f-goal" type="number" min="1" step="1">
         </label>
-        <label class="field">
+        <label class="field" hidden>
           <span>Game length (minutes)</span>
           <input id="f-minutes" type="number" min="1" max="15" step="1">
         </label>

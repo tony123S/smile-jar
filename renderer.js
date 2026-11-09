@@ -1383,6 +1383,8 @@ async function startSession(levelId = playLevelId) {
   } catch (err) {
     showError(err.message || String(err));
     setHint('Could not start.', 'err');
+    // Without the camera there are no face controls, so the level waits instead of running on.
+    if (session?.adv) { cancelAnimationFrame(session.adv.raf); momoVoice.stop(); $('adv-prompt').hidden = true; }
   }
 }
 

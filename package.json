@@ -3,7 +3,7 @@
   "productName": "Smile Monster",
   "version": "1.0.0",
   "private": true,
-  "description": "Smile Monster: a cute story game where your real smiles, counted live by the SmartSpectra SDK, help a little monster bring its world back to life and add sponsor pledges for charity.",
+  "description": "Smile Monster: Expression Adventure. A cute game where your face is the controller: smile, surprise, blink and straight-face expressions read live by the SmartSpectra SDK guide Momo through five levels, and real smiles add sponsor pledges for charity.",
   "main": "main.js",
   "license": "MIT",
   "scripts": {
