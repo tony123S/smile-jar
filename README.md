@@ -40,6 +40,8 @@ Each level-up plays an evolution animation, a fanfare that's different for every
 | Talk | `TALKING` (`detected` flag) | moves its mouth along with you |
 | Breathe | breathing bundle (chest trace, optional) | its body rises and falls with yours |
 
+**A monster with a life of its own.** Left alone, it idles, waddles around its world, stops to sniff the flowers once they've come back, and dozes off (with little z's) if nothing happens for 20 seconds. Its eyes look the way it's walking. The moment you smile or look surprised it stops, turns to look at you and reacts, and it does a happy spin when it grows. On the home screen you can tap it to wake it up. The egg can't walk yet, so it only rocks in place. All of this is plain animation (`src/behaviour.js`), separate from your real signals.
+
 **No flickering faces.** The live scores jump around, so the monster's face goes through a small mood filter (`src/mood.js`). It smooths the scores, only changes face when an expression has held for about a fifth of a second, keeps each face on screen for at least half a second, and uses separate on and off thresholds so a score hovering at the edge can't make it flicker. Only happy and surprised are mirrored. The SDK also reports sad, angry and others, but they aren't used until they can be checked on real faces. Faces take priority over the monster's own idle animation.
 
 A **Live signals** panel shows which signals are actually arriving (`live`), stopped (`paused`), never seen (`waiting`) or not requested (`off`). If a signal never arrives, the monster simply doesn't use it. On the home screen the monster has its own idle bounce and blink; those are animations, not signals.

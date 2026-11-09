@@ -145,10 +145,11 @@ export function faceFor(stageKey, live = {}) {
   if (live.face === 'grin') return 'grin';
   if (live.talking) return live.talkOpen ? 'talk-open' : 'talk';
   if (live.face === 'soft') return 'happy'; // easing back to calm after a smile
+  if (live.sleeping) return 'sleepy';
   return STAGES.find((s) => s.key === stageKey)?.mood || 'happy';
 }
 
-function eyes({ cx, cy, gap, rx, ry, expr, closed, wink }) {
+function eyes({ cx, cy, gap, rx, ry, expr, closed, wink, look = 0 }) {
   if (expr === 'sleepy' && !closed) {
     return `<g class="m-eyes">${[-gap, gap].map((dx) => `<path d="M${f1(cx + dx - rx)} ${f1(cy - 1)} q${f1(rx)} ${f1(ry * 0.9)} ${f1(rx * 2)} 0" fill="none" stroke="${INK}" stroke-width="3.4" stroke-linecap="round"/>`).join('')}</g>`;
   }
@@ -160,7 +161,7 @@ function eyes({ cx, cy, gap, rx, ry, expr, closed, wink }) {
   const erx = rx * big, ery = ry * big;
   let out = '';
   for (const dx of [-gap, gap]) {
-    const x = cx + dx;
+    const x = cx + dx + look * rx * 0.35; // its eyes look the way it's walking
     if (wink && dx > 0) {
       // a wink back: the right eye closes in a happy arc
       out += `<path d="M${f1(x - rx)} ${f1(cy + 2)} q${f1(rx)} ${f1(-ry * 1.1)} ${f1(rx * 2)} 0" fill="none" stroke="${INK}" stroke-width="3.4" stroke-linecap="round"/>`;
@@ -350,7 +351,7 @@ export function monsterSvg({ stage, traits, live = {}, standalone = false, backd
   const blushOn = expr === 'grin' || expr === 'extra' || expr === 'shy' || expr === 'proud' || expr === 'playful';
   b += `<ellipse cx="${f1(cx - rx * 0.52)}" cy="${f1(ey + ery + 5 * s)}" rx="${f1(11 * s)}" ry="${f1(6.5 * s)}" fill="${BLUSH}" opacity="${blushOn ? 0.75 : 0.45}"/>`;
   b += `<ellipse cx="${f1(cx + rx * 0.52)}" cy="${f1(ey + ery + 5 * s)}" rx="${f1(11 * s)}" ry="${f1(6.5 * s)}" fill="${BLUSH}" opacity="${blushOn ? 0.75 : 0.45}"/>`;
-  b += eyes({ cx, cy: ey, gap: rx * 0.34, rx: erx, ry: ery, expr, closed: !!live.eyesClosed, wink: !!live.wink });
+  b += eyes({ cx, cy: ey, gap: rx * 0.34, rx: erx, ry: ery, expr, closed: !!live.eyesClosed, wink: !!live.wink, look: Number(live.look) || 0 });
   b += mouth({ cx, cy: ey + ery + 9 * s, expr, s });
 
   // growing-up accessories, same character every level

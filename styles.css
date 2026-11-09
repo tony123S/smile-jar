@@ -277,6 +277,19 @@ dialog::backdrop { background: rgba(70, 50, 110, .45); backdrop-filter: blur(3px
   60% { transform: scale(1.18); filter: drop-shadow(0 0 40px #d9ccff) brightness(2); }
   100% { transform: scale(1); filter: none; }
 }
+/* the monster's own life: walking, sniffing flowers, napping, celebrating */
+.walker { display: flex; justify-content: center; transition: translate .12s linear; }
+.walker.is-walk { animation: waddle .5s ease-in-out infinite; transform-origin: 50% 95%; }
+.walker.is-sniff { animation: sniff 1.6s ease-in-out; transform-origin: 50% 95%; }
+.walker.is-sleep { animation: snooze 3.6s ease-in-out infinite; transform-origin: 50% 95%; }
+.walker.is-celebrate { animation: celebrate 0.9s ease-in-out 2; transform-origin: 50% 70%; }
+#home-monster { cursor: pointer; }
+#home-monster.hi svg { animation: hop .5s ease; }
+@keyframes waddle { 0%, 100% { transform: rotate(-4deg) translateY(0); } 25% { transform: rotate(0) translateY(-6px); } 50% { transform: rotate(4deg) translateY(0); } 75% { transform: rotate(0) translateY(-6px); } }
+@keyframes sniff { 0%, 100% { transform: none; } 30%, 70% { transform: rotate(6deg) translateY(6px) scale(1.02, .97); } 50% { transform: rotate(8deg) translateY(8px) scale(1.04, .95); } }
+@keyframes snooze { 0%, 100% { transform: scale(1, 1); } 50% { transform: scale(1.03, .96); } }
+@keyframes celebrate { 0% { transform: none; } 30% { transform: translateY(-30px) rotate(-10deg); } 60% { transform: translateY(-30px) rotate(10deg) scale(1.05); } 100% { transform: none; } }
+@media (prefers-reduced-motion: reduce) { .walker { animation: none !important; transition: none; } }
 .monster-card.happy .monster-wrap { animation: hop .5s ease; }
 .monster-card.jump .monster-wrap { animation: jump .7s cubic-bezier(.3, 1.4, .5, 1); }
 @keyframes jump { 0% { transform: translateY(0) scale(1, 1); } 15% { transform: translateY(4px) scale(1.06, .92); } 45% { transform: translateY(-46px) scale(.96, 1.05); } 75% { transform: translateY(0) scale(1.05, .95); } 100% { transform: none; } }

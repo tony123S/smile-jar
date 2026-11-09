@@ -31,7 +31,7 @@ There are five chapters:
 4. **Spread the Happiness** - a Happy Monster with sparkle wings, and the sky fills with colour and a rainbow.
 5. **The World of Smiles** - the Guardian of Joy, with a flower crown, a soft glow, mushroom houses and floating hearts.
 
-After it hatches it's always the same round, squishy monster with big sparkly eyes and tiny arms, it just grows up. Every smile is +10 XP, and every level-up has its own little animation and fanfare.
+Once it hatches it has a little life of its own: it waddles around, sniffs the flowers, and falls asleep if you ignore it. When you smile it stops and turns to look at you. It's always the same round, squishy monster with big sparkly eyes and tiny arms, it just grows up. Every smile is +10 XP, and every level-up has its own little animation and fanfare.
 
 What it looks like also depends on what made you smile. Puns give it tiny horns, animal facts give it fluffy ears, memories make it glow, daydream cards give it star freckles. So your monster might be a "Fluffy Furbun" and your friend's a "Dreamy Starbean".
 

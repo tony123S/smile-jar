@@ -20,6 +20,7 @@
 
 import { SmileDetector, DEFAULTS as SMILE, happyScore } from './src/smile-detector.js';
 import { MoodMirror } from './src/mood.js';
+import { Wanderer } from './src/behaviour.js';
 import {
   pledgeFor, sessionPledge, marginalRate, formatCents, pledgeStatementCsv, sponsorOwes, confirmedTotal, pledgeLedger,
 } from './src/pledges.js';
@@ -336,11 +337,56 @@ function renderImpact() {
     : rate > 0 ? `your next smile adds ${rate}¢ in pledges` : 'every sponsor has reached their cap';
 }
 
+// ---------------------------------------------------------------- the monster's own life
+// It wanders, sniffs flowers, naps and celebrates by itself (src/behaviour.js). Your face always
+// wins: when the mood filter shows a smile or surprise it stops and looks at you.
+const reducedMotion = (() => { try { return matchMedia('(prefers-reduced-motion: reduce)').matches; } catch { return false; } })();
+const homeWalk = new Wanderer({ now: Date.now() });
+let homeAct = { action: 'idle', look: 0 };
+
+function walkWorld(w, look, extra = false) {
+  w.setWorld({ canWalk: look.stage.key !== 'egg' && !extra && !reducedMotion, flowers: look.tier >= 2 });
+}
+
+function drawHomeMonster() {
+  drawMonster($('home-monster'), liveMonster(null), { sleeping: homeAct.action === 'sleep', look: homeAct.look });
+}
+
+// Move the walker, and redraw the monster only when what it's doing actually changes.
+function driveWalker(w, walkerId, face, last, redraw) {
+  const now = Date.now();
+  const r = w.tick(now, { face });
+  const el = $(walkerId);
+  const wrap = el.firstElementChild;
+  const range = Math.max(30, ((el.parentElement?.clientWidth || 0) - (wrap?.clientWidth || 0)) / 2 + 60);
+  el.style.translate = `${Math.round(r.x * range)}px 0`;
+  for (const a of ['walk', 'sniff', 'sleep', 'celebrate', 'look']) el.classList.toggle(`is-${a}`, r.action === a);
+  if (r.action !== last.action || r.look !== last.look) { last.action = r.action; last.look = r.look; redraw(); }
+}
+
+function walkFrame() {
+  requestAnimationFrame(walkFrame);
+  const view = document.body.dataset.view;
+  if (view === 'session' && session) driveWalker(session.walk, 's-walker', session.hatching ? 'flat' : session.face, session.act, scheduleMonster);
+  else if (view === 'home') driveWalker(homeWalk, 'home-walker', 'flat', homeAct, drawHomeMonster);
+}
+requestAnimationFrame(walkFrame);
+
+$('home-monster').addEventListener('click', () => {
+  // a tap wakes it up and makes it happy
+  homeWalk.poke(Date.now());
+  const w = $('home-monster');
+  w.classList.remove('hi'); void w.offsetWidth; w.classList.add('hi');
+  sfx.happy();
+});
+
 function renderHome() {
   const m = liveMonster(null);
   const look = monsterLook(m);
   drawWorld('home-world', look.tier);
-  drawMonster($('home-monster'), m, {});
+  walkWorld(homeWalk, look);
+  homeWalk.poke(Date.now());
+  drawHomeMonster();
   $('home-level').textContent = `Lv ${look.stage.level}`;
   $('home-name').textContent = look.name;
   $('home-stage').textContent = chapterLine(look.stage);
@@ -627,6 +673,8 @@ function liveFace() {
     // a wink keeps one eye open, so it takes over from the blink that triggered it
     eyesClosed: now >= s.winkUntil && (s.blink.closed || now < s.eyesClosedUntil),
     wink: now < s.winkUntil,
+    sleeping: s.act.action === 'sleep',
+    look: s.act.look,
     breath: state.settings.breathMirror ? s.breath.level() : null,
     talking: !!s.talking,
     talkOpen: !!s.talking && Math.floor(now / 170) % 2 === 0,
@@ -638,6 +686,7 @@ function renderMonsterNow() {
   const m = liveMonster();
   const look = monsterLook(m);
   const hatching = session.hatching ? { stage: 'egg', egg: { cracks: 3, shake: true, hatching: true } } : {};
+  walkWorld(session.walk, look, !!session.hatching);
   drawMonster($('s-monster'), m, liveFace(), hatching);
   drawWorld('s-world', look.tier, { fade: true });
   $('s-level').textContent = `Lv ${look.stage.level}`;
@@ -749,6 +798,7 @@ function shellBurst() {
 }
 
 function celebrateEvolution(from, to) {
+  session.walk.celebrate(Date.now(), from.key === 'egg' ? HATCH_SHAKE_MS : 0);
   if (from.key === 'egg') { hatchEgg(to); return; }
   bounceClass('evolving', 1700);
   sfx.evolve(to.level);
@@ -768,6 +818,7 @@ function onSmile(peakHappy = 0) {
   const worth = marginalRate(sponsors, s.before + s.smiles);
   const before = stageFor(liveMonster().smiles);
   const tierBefore = worldTier(liveMonster().smiles);
+  s.walk.poke(Date.now());
   s.smiles += 1; // the single place a qualifying smile is counted; XP and pledges both derive from it
   const now = Date.now();
   s.combo = now - s.lastSmileAt <= COMBO_WINDOW_MS ? s.combo + 1 : 1;
@@ -875,6 +926,7 @@ function handleMetrics(m) {
     const t = talkingNow(f.talking);
     if (t !== s.talking) {
       s.talking = t;
+      if (t) s.walk.poke(now);
       clearInterval(s.talkTimer);
       if (t) {
         s.talkTimer = setInterval(scheduleMonster, 170); // mouth moves while the SDK says you're talking
@@ -965,6 +1017,8 @@ async function startSession() {
     eyesClosedUntil: 0,
     winkUntil: 0,
     mood: new MoodMirror(),
+    walk: new Wanderer({ now }),
+    act: { action: 'idle', look: 0 },
     talking: false,
     talkTimer: null,
     toldLearned: false,
