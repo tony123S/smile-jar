@@ -84,3 +84,10 @@ test('a broken old save is left alone rather than lost', async () => {
   assert.equal(store.migrateLegacySave(both), false);
   assert.equal(both.data['smilemonster.v1'], '{"b":2}');
 });
+
+test('every chapter says what it brings back, and the signal check starts hidden', async () => {
+  const { STAGES } = await import('../src/monster.js');
+  const store = await import('../src/store.js');
+  for (const s of STAGES) assert.ok(s.brings && s.brings.length > 5, `${s.key} has a "brings back" line`);
+  assert.equal(store.defaultState().settings.diagnostics, false, 'technical SDK details are off for normal players');
+});

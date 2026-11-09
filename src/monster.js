@@ -11,11 +11,11 @@
 // kept from earlier versions so old saves still load on the same level.
 
 export const STAGES = Object.freeze([
-  { key: 'egg', label: 'Mysterious Egg', chapter: 'The Mysterious Egg', at: 0, mood: 'egg' },
-  { key: 'blob', label: 'Baby Monster', chapter: 'The Awakening', at: 3, mood: 'shy' },
-  { key: 'hatchling', label: 'Growing Monster', chapter: 'The Power of Joy', at: 8, mood: 'happy' },
-  { key: 'sprite', label: 'Happy Monster', chapter: 'Spread the Happiness', at: 15, mood: 'playful' },
-  { key: 'final', label: 'Guardian of Joy', chapter: 'The World of Smiles', at: 25, mood: 'proud' },
+  { key: 'egg', label: 'Mysterious Egg', chapter: 'The Mysterious Egg', at: 0, mood: 'egg', brings: 'little glowing lights' },
+  { key: 'blob', label: 'Baby Monster', chapter: 'The Awakening', at: 3, mood: 'shy', brings: 'flowers and grass' },
+  { key: 'hatchling', label: 'Growing Monster', chapter: 'The Power of Joy', at: 8, mood: 'happy', brings: 'trees, a warm sun and stars' },
+  { key: 'sprite', label: 'Happy Monster', chapter: 'Spread the Happiness', at: 15, mood: 'playful', brings: 'a colourful sky and a rainbow' },
+  { key: 'final', label: 'Guardian of Joy', chapter: 'The World of Smiles', at: 25, mood: 'proud', brings: 'mushroom houses and floating hearts' },
 ]);
 
 export const XP_PER_SMILE = 10;

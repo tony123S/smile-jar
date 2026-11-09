@@ -52,7 +52,7 @@ const $ = (id) => document.getElementById(id);
 let state = store.load();
 
 // ---------------------------------------------------------------- helpers
-const VIEWS = ['story', 'consent', 'home', 'campaign', 'session', 'summary'];
+const VIEWS = ['story', 'consent', 'home', 'world', 'session', 'summary'];
 let currentView = null;
 
 function musicFor(view) {
@@ -291,7 +291,6 @@ $('btn-story-next').addEventListener('click', () => {
   renderScene(sceneIdx);
 });
 $('btn-story-skip').addEventListener('click', finishStory);
-$('btn-replay-story').addEventListener('click', () => startStory('home'));
 $('btn-replay-story-2').addEventListener('click', () => startStory('home'));
 
 // ---------------------------------------------------------------- consent
@@ -317,8 +316,42 @@ function campaignTotals() {
   return { smiles, total, lines };
 }
 
-function renderChapters(stageIndex, el) {
-  el.innerHTML = STAGES.map((s, i) => `<li class="${i < stageIndex ? 'done' : i === stageIndex ? 'now' : ''}" title="${esc(s.chapter)}">${i < stageIndex ? '✓ ' : ''}${i + 1}. ${esc(s.chapter)}</li>`).join('');
+// One card per chapter: done, the one you're on (with progress), or still to come.
+function renderChapters(m, look, el) {
+  el.innerHTML = STAGES.map((s, i) => {
+    const done = i < look.stage.index;
+    const now = i === look.stage.index;
+    const need = STAGES[i + 1]?.at;
+    const status = done ? '\u2713 Restored'
+      : now ? (need ? `${m.smiles - s.at} / ${need - s.at} smiles` : 'Fully restored!')
+      : `Unlocks at ${plural(s.at, 'smile', 'smiles')}`;
+    return `<li class="${done ? 'done' : now ? 'now' : 'locked'}">
+      <span class="ch-num">${i + 1}</span>
+      <strong>${esc(s.chapter)}</strong>
+      <span class="ch-who">${esc(s.label)}</span>
+      <span class="ch-brings">Brings back ${esc(s.brings)}</span>
+      <span class="ch-status">${status}</span></li>`;
+  }).join('');
+}
+
+function renderWorld() {
+  const m = liveMonster(null);
+  const look = monsterLook(m);
+  $('world-hero-art').innerHTML = worldSvg({ tier: look.tier, uid: 'whero' });
+  drawMonster($('world-monster'), m, { face: m.smiles > 0 ? 'grin' : 'flat' });
+  const restored = look.stage.next ? Math.round(((look.stage.index + look.stage.progress) / STAGES.length) * 100) : 100;
+  $('world-pct').textContent = `${restored}%`;
+  $('world-next').textContent = look.stage.next
+    ? `Chapter ${look.stage.level}: ${nextLine(look.stage)}, and ${look.stage.next.brings} come back.`
+    : 'Every chapter is complete. The whole world is smiling again!';
+  const eaten = DIET_KINDS.some((k) => (m.diet[k] || 0) > 0);
+  $('world-diet').hidden = !eaten;
+  $('world-diet').textContent = eaten ? dietLine(m) : '';
+  renderChapters(m, look, $('world-chapters'));
+  const { smiles, total } = campaignTotals();
+  $('w-smiles').textContent = smiles;
+  $('w-total').textContent = formatCents(total);
+  $('w-confirmed').textContent = formatCents(confirmedTotal(state.campaign.sponsors));
 }
 
 function renderImpact() {
@@ -394,15 +427,11 @@ function renderHome() {
   $('home-xp').textContent = barText(look, m);
   markBar('home-stage-fill', look);
   $('home-next').textContent = nextLine(look.stage);
-  const eaten = DIET_KINDS.some((k) => (m.diet[k] || 0) > 0);
-  $('home-diet').hidden = !eaten;
-  $('home-diet').textContent = eaten ? dietLine(m) : '';
   $('home-goal-line').textContent = look.stage.key === 'egg'
     ? `\u{1F95A} Press PLAY and smile ${plural(look.stage.toNext, 'time', 'times')} to hatch the egg`
     : look.stage.next
     ? `\u{1F60A} Press PLAY and smile ${plural(look.stage.toNext, 'time', 'times')} to finish Chapter ${look.stage.level}`
     : '\u{1F308} You restored the whole world! Keep playing to raise more for charity.';
-  renderChapters(look.stage.index, $('chapter-dots'));
   renderImpact();
 }
 
@@ -416,6 +445,7 @@ function renderCampaign() {
   $('f-minutes').value = state.settings.sessionMinutes;
   $('f-pulse').checked = !!state.settings.showPulse;
   $('f-breath').checked = !!state.settings.breathMirror;
+  $('f-diag').checked = !!state.settings.diagnostics;
   applyAudioSettings();
 
   const ledger = pledgeLedger(c.sponsors, smiles);
@@ -475,9 +505,15 @@ function renderCampaign() {
   }
 }
 
-function openCampaign() { renderCampaign(); show('campaign'); }
+function openCampaign(section) {
+  renderWorld();
+  renderCampaign();
+  show('world');
+  if (section) $(section)?.scrollIntoView({ block: 'start' });
+}
 $('btn-settings').addEventListener('click', () => { if (store.hasConsent(state) && !session) openCampaign(); });
-$('btn-open-campaign').addEventListener('click', openCampaign);
+$('btn-open-campaign').addEventListener('click', () => openCampaign('w-charity'));
+$('btn-open-world').addEventListener('click', () => { sfx.click(); openCampaign(); });
 $('btn-back-home').addEventListener('click', () => { renderHome(); show('home'); });
 $('btn-open-privacy').addEventListener('click', () => { renderPrivacy(); dlg.showModal(); });
 
@@ -486,6 +522,7 @@ $('f-goal').addEventListener('change', (e) => { state.campaign.goalCents = Math.
 $('f-minutes').addEventListener('change', (e) => { state.settings.sessionMinutes = Math.min(15, Math.max(1, Math.round(Number(e.target.value) || 2))); persist(); renderCampaign(); });
 $('f-pulse').addEventListener('change', (e) => { state.settings.showPulse = e.target.checked; persist(); });
 $('f-breath').addEventListener('change', (e) => { state.settings.breathMirror = e.target.checked; persist(); });
+$('f-diag').addEventListener('change', (e) => { state.settings.diagnostics = e.target.checked; persist(); });
 $('btn-add-sponsor').addEventListener('click', () => {
   const i = state.campaign.sponsors.length;
   state.campaign.sponsors.push(store.normalizeSponsor({ id: `s${Date.now()}`, name: 'New sponsor', centsPerSmile: 5 }, i));
@@ -604,14 +641,6 @@ function nextCard() {
     const line = session.voice.onLearned(now);
     if (line) { session.toldLearned = true; speak(line.text); }
   }
-  renderTaste();
-}
-
-function renderTaste() {
-  const rows = session.humour.summary().filter((r) => r.smiles > 0);
-  $('s-taste').textContent = rows.length
-    ? `What makes you smile: ${rows.map((r) => `${r.kind} ${r.smiles}`).join(' · ')}`
-    : '';
 }
 
 function speak(text) {
@@ -631,16 +660,6 @@ function restartReelTimer() {
   if (session) session.reelTimer = setInterval(nextCard, 9000);
 }
 
-$('clip-file').addEventListener('change', (e) => {
-  const file = e.target.files?.[0];
-  const clip = $('clip');
-  if (clip.src) URL.revokeObjectURL(clip.src);
-  if (!file) { clip.hidden = true; return; }
-  clip.src = URL.createObjectURL(file); // stays local; never uploaded
-  clip.hidden = false;
-  $('reel-text').hidden = true;
-  clip.play().catch(() => {});
-});
 
 function updateMeter(level) {
   const pct = Math.round(Math.max(0, Math.min(100, level)));
@@ -711,6 +730,8 @@ function scheduleMonster() {
 
 function renderSignals() {
   if (!session) return;
+  // The signal check is for judges and developers; players can turn it on in My world > Settings.
+  $('diag').hidden = !state.settings.diagnostics;
   const st = session.signals.status(Date.now());
   const requested = {
     expressions: true, blinking: true, talking: true,
@@ -836,7 +857,6 @@ function onSmile(peakHappy = 0) {
     s.snack[card.sponsorId] = (s.snack[card.sponsorId] || 0) + 1;
     snackFrom = sponsors.find((x) => x.id === card.sponsorId) || null;
   }
-  renderTaste();
 
   // Game world: happiness energy and XP. Real world: the sponsors' pledge.
   popAt(`+${XP_PER_SMILE} XP`, golden ? 'xp gold' : 'xp', -40);
@@ -1039,7 +1059,6 @@ async function startSession() {
   $('pulse-row').hidden = !state.settings.showPulse;
   $('pulse-value').textContent = '--';
   $('reel-text').hidden = false;
-  $('clip').hidden = true;
   $('meter-mark').style.left = `${SMILE.onThreshold}%`;
   updateMeter(0);
   setHint('Starting the SDK...');
@@ -1089,10 +1108,6 @@ async function endSession() {
   const signalStatus = s.signals.status(now);
   session = null;
   await stopSdk();
-  const clip = $('clip');
-  clip.pause();
-  if (clip.src) { URL.revokeObjectURL(clip.src); clip.removeAttribute('src'); }
-  $('clip-file').value = '';
 
   // Commit what the session fed the monster, remembering the deltas so "Don't save" can undo them.
   const delta = { smiles: s.smiles, diet: { ...s.diet }, snack: { ...s.snack }, surprises: s.surprises };
@@ -1114,6 +1129,20 @@ async function endSession() {
   const look = monsterLook(m);
   drawWorld('sum-world', look.tier);
   drawMonster($('summary-monster'), m, { face: s.smiles > 0 ? 'grin' : 'flat' });
+  // Growth: a hatch or an evolution gets a before -> after moment.
+  const grew = s.evolutions.length > 0;
+  const hatched = grew && s.stageAtStart.key === 'egg';
+  $('sum-title').textContent = hatched ? 'Your egg hatched!' : grew ? `Your monster grew into a ${look.stage.label}!` : s.smiles > 0 ? 'Great game!' : 'Nice try!';
+  $('sum-before').hidden = !grew;
+  $('sum-arrow').hidden = !grew;
+  if (grew) {
+    $('sum-before').innerHTML = monsterSvg({ stage: s.stageAtStart.key, traits: look.traits, live: { face: 'flat' }, egg: { cracks: hatched ? 3 : 0 }, uid: `before${++uidSeq}` });
+    const row = $('summary-monster').parentElement;
+    row.classList.remove('grow'); void row.offsetWidth; row.classList.add('grow');
+  }
+  $('sum-xp-gain').textContent = `+${s.smiles * XP_PER_SMILE}`;
+  $('sum-smiles-big').textContent = s.smiles;
+  $('sum-pledge-big').textContent = formatCents(record.pledgedCents);
   $('sum-level').textContent = `Lv ${look.stage.level}`;
   $('sum-stage').textContent = chapterLine(look.stage);
   $('sum-name').textContent = look.name;
@@ -1121,7 +1150,7 @@ async function endSession() {
   $('sum-evolved').textContent = s.evolutions.length
     ? `It grew up this game: ${[s.stageAtStart.label, ...s.evolutions.map((x) => x.label)].join(' → ')}`
     : '';
-  $('sum-xp').textContent = `+${s.smiles * XP_PER_SMILE} XP · ${xpText(look.xp)} · ${nextLine(look.stage)}`;
+  $('sum-xp').textContent = `${barText(look, m)} · ${nextLine(look.stage)}`;
 
   const unit = record.smiles === 1 ? 'qualifying smile' : 'qualifying smiles';
   $('sum-smiles').textContent = record.smiles;

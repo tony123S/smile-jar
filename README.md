@@ -44,7 +44,7 @@ Each level-up plays an evolution animation, a fanfare that's different for every
 
 **No flickering faces.** The live scores jump around, so the monster's face goes through a small mood filter (`src/mood.js`). It smooths the scores, only changes face when an expression has held for about a fifth of a second, keeps each face on screen for at least half a second, and uses separate on and off thresholds so a score hovering at the edge can't make it flicker. Only happy and surprised are mirrored. The SDK also reports sad, angry and others, but they aren't used until they can be checked on real faces. Faces take priority over the monster's own idle animation.
 
-A **Live signals** panel shows which signals are actually arriving (`live`), stopped (`paused`), never seen (`waiting`) or not requested (`off`). If a signal never arrives, the monster simply doesn't use it. On the home screen the monster has its own idle bounce and blink; those are animations, not signals.
+For judges and developers, a **signal check** panel (turn it on in My world → Settings → "Show the signal check during games") shows which signals are actually arriving (`live`), stopped (`paused`), never seen (`waiting`) or not requested (`off`). If a signal never arrives, the monster simply doesn't use it. On the home screen the monster has its own idle bounce and blink; those are animations, not signals.
 
 **Easy to pick up.** The home screen shows one goal ("Press PLAY and smile 3 times to hatch the egg"). Before the first game a 3-step **How to play** guide explains it: read the joke, smile for real, your monster grows. In a game a big banner says what to do, and the HUD shows how many smiles until the monster grows.
 
@@ -61,7 +61,9 @@ A qualifying smile counts in two separate places:
 
 The home screen has a small **Real-world impact** card: total qualifying smiles, total pledged by sponsors, confirmed donations and progress toward the goal. **Pledged** (promised, worked out from smiles and caps) and **Confirmed donated** (what you record after a sponsor actually donates) are always shown separately. The player never pays anything; sponsors donate to the charity themselves.
 
-Everything administrative lives in **Charity & settings**: sponsors with rates, caps and their **snack jokes**, confirmed donation amounts, the cause and goal, game length, breathing and pulse options, sound settings, the game history, replaying the story and starting a new monster. A sponsor's snack joke is served in the game as "A snack from Grandma Lee"; if it makes you smile, that sponsor gets the credit.
+**Four screens.** **Home** (your monster, one goal and a big PLAY button), **Gameplay**, **Growth** (after each game: a before and after picture when it hatched or grew, plus XP, smiles, the pledge and **Continue**) and **My world** (how much of the world is restored, the five chapters, the charity and the settings). The opening story and the camera consent come once before these.
+
+Everything administrative lives in **My world**: sponsors with rates, caps and their **snack jokes**, confirmed donation amounts, the cause and goal, game length, breathing and pulse options, sound settings, the game history, replaying the story and starting a new monster. A sponsor's snack joke is served in the game as "A snack from Grandma Lee"; if it makes you smile, that sponsor gets the credit.
 
 **Smile Receipt.** After a game, save a PNG with the monster, its name and level, the qualifying smiles, each sponsor's pledge for the game, the campaign's pledged and confirmed totals, and the charity. It says plainly that pledged means promised, not paid, and it contains no camera image. A CSV pledge statement can be exported from settings.
 
@@ -78,7 +80,7 @@ camera ──► SmartSpectra SDK (renderer captures frames, main process analys
    face.blinking[]  ──► BlinkTracker          ├─► monsterSvg() redrawn once per frame
    face.talking[]   ──► talkingNow()          │
    breathing trace  ──► BreathNormalizer     ─┘
-   all of the above ──► SignalMonitor ──► "Live signals" chips
+   all of the above ──► SignalMonitor ──► signal check chips (optional)
 
    qualifying smiles ──► xpFor() (10 XP each) ──► stageFor() level ──► worldTier() ──► worldSvg()
 ```
@@ -107,13 +109,13 @@ The key is read at build time from `.env` (or the `SMARTSPECTRA_API_KEY` environ
 
 1. `npm start`. The opening story plays first. Click **Continue** through the four scenes (or **Skip story**), then **LET'S BEGIN!**. Music starts after your first click.
 2. The camera consent screen comes next. Tick the agreement and press **Meet my monster**. (The diagnostics box is optional and off by default.) The camera has not been touched yet.
-3. The home screen shows the Mysterious Egg in its grey world, the happiness bar, the five chapters and the Real-world impact card. Try the **Music**, **Sounds** and volume controls at the top.
+3. The home screen shows the Mysterious Egg in its grey world, the happiness bar and the Real-world impact card. Open **My world** to see the five chapters and how much of the world is restored. Try the **Music**, **Sounds** and volume controls at the top.
 4. Press **PLAY**. Before your first game a 3-step **How to play** guide appears (you can open it again from the home screen). Only after that does the SDK open the camera (the OS may ask for permission). The hint on the preview tells you when it's running and how to sit.
-5. Look at the **Live signals** chips. They show which SmartSpectra signals your key and setup are really delivering.
+5. To see which SmartSpectra signals your key and setup are really delivering, turn on **My world → Settings → Show the signal check during games** before you play. It's off by default so normal players don't see technical details.
 6. Smile at the cards. Each counted smile pops "+10 XP" and the sponsors' pledge. Your first smile makes the egg glow and brings back the first lights. Each smile adds a crack, and the third one hatches the egg into a Baby Monster. Blink, talk, look surprised and breathe, and watch the monster copy you.
 7. Smile at a "Sponsor snack" card to see that sponsor get the credit.
-8. Press **End game**. The camera turns off and the summary shows XP, the monster, sponsor pledges and the charity. Press **Save Smile Receipt**.
-9. Open **Charity & settings**, type an amount in **Donated ($)** for a sponsor and go back: Pledged and Confirmed donated update separately. Try **Export pledge statement (CSV)** and **Replay the story**.
+8. Press **End game**. The camera turns off and the Growth screen shows the egg turning into the baby monster (if it hatched), XP, smiles, sponsor pledges and the charity. Press **Save Smile Receipt**.
+9. Open **My world**, type an amount in **Donated ($)** for a sponsor and go back: Pledged and Confirmed donated update separately. Try **Export pledge statement (CSV)** and **Replay the story**.
 10. Open **Privacy & data** and press **Delete all my data** to see the wipe (it starts again from the story).
 
 Breathing needs your chest in view (sit back a little). Pulse needs an API key provisioned for cardio metrics; leave it off if yours isn't.
@@ -163,7 +165,7 @@ Breathing needs your chest in view (sit back a little). Pulse needs an API key p
 
 ```
 main.js                 Electron main: window, SmartSpectra IPC bridge, camera-only permission
-renderer.js             Screens (story, home, game, summary, settings), SmartSpectra wiring, live mirroring
+renderer.js             Screens (story, consent, home, gameplay, growth, my world), SmartSpectra wiring, live mirroring
 src/monster.js          Five levels, XP, traits from the joke diet, names, the monster SVG
 src/world.js            The world SVG, from grey (tier 0) to fully restored (tier 5)
 src/music.js            Original looping background music (Web Audio scheduler)

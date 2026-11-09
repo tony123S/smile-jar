@@ -8,7 +8,8 @@ cover_image:
 <!--
   BEFORE YOU PUBLISH (delete this comment):
   1. Run the real app (npm start) with your camera and API key.
-  2. Look at the "Live signals" chips during a game. If any chip stays on "waiting"
+  2. Turn on My world > Settings > "Show the signal check during games", then look at
+     the chips during a game. If any chip stays on "waiting"
      (for example Breathing or Talking), remove that row from the table in
      "How It Responds to Human Signals", or say it didn't arrive for you.
   3. Upload docs/cover.png as the cover image.
@@ -84,7 +85,7 @@ The monster's face uses the same scores, but copying them straight across made i
 
 Each smile is also matched to the joke that was on screen when it started. That's how the monster knows you're an animal lover, and how the joke cards learn to show you more of what works on you.
 
-I really didn't want to fake anything, so there's a **Live signals** panel in the game that shows which SDK signals are actually coming in. If one never shows up, the monster just doesn't use it. (On the home screen the monster does its own idle bounce and blink, but that's just animation, not your signals.)
+I really didn't want to fake anything, so there's a **signal check** panel that shows which SDK signals are actually coming in. It's hidden for normal players and you turn it on in the settings. If one never shows up, the monster just doesn't use it. (When you're not doing anything, the monster walks around, sniffs flowers and naps on its own. That's just animation, not your signals.)
 
 There's also a simulate mode (`npm run simulate`) so I could build the game without using up API credits. It uses keyboard keys instead of the camera, and a big yellow "SIMULATED SIGNALS" banner stays on screen the whole time.
 

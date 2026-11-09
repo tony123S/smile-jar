@@ -23,7 +23,7 @@
       <button type="button" class="chip-btn" id="btn-music" aria-pressed="true" title="Background music">&#9835; Music on</button>
       <button type="button" class="chip-btn" id="btn-sfx" aria-pressed="true" title="Sound effects">&#10022; Sounds on</button>
       <label class="vol" title="Volume"><span class="sr">Volume</span><span aria-hidden="true">&#128264;</span><input type="range" id="vol" min="0" max="100" step="5" aria-label="Volume"></label>
-      <button type="button" class="chip-btn" id="btn-settings">&#9881; Charity &amp; settings</button>
+      <button type="button" class="chip-btn" id="btn-settings">&#127757; My world</button>
       <button type="button" class="link" id="nav-privacy">Privacy &amp; data</button>
     </div>
   </header>
@@ -82,13 +82,11 @@
         <div class="next-line" id="home-next"></div>
       </div>
       <div class="walker" id="home-walker"><div class="monster-wrap idle" id="home-monster" title="Tap to say hi"></div></div>
-      <ol class="chapters" id="chapter-dots" aria-label="Story chapters"></ol>
       <button type="button" class="play-btn" id="btn-play">PLAY</button>
       <p class="goal-line" id="home-goal-line"></p>
-      <div class="diet-line" id="home-diet"></div>
       <div class="home-links">
         <button type="button" class="chip-btn" id="btn-howto">? How to play</button>
-        <button type="button" class="link" id="btn-replay-story">&#9733; Replay the story</button>
+        <button type="button" class="chip-btn" id="btn-open-world">&#127757; My world</button>
       </div>
     </div>
 
@@ -102,7 +100,7 @@
       <div class="progress" title="Pledged toward the goal"><div class="progress-fill" id="home-progress"></div></div>
       <div class="impact-foot">Goal <span id="home-goal">$25.00</span> &middot; <span id="home-rate"></span></div>
       <div class="impact-foot">Pledged means promised. Sponsors donate to the charity themselves; Smile Monster never takes payment.</div>
-      <button type="button" class="link" id="btn-open-campaign">Manage charity &amp; sponsors</button>
+      <button type="button" class="link" id="btn-open-campaign">Sponsors &amp; charity</button>
     </aside>
   </main>
 
@@ -118,12 +116,41 @@
     <div class="actions center"><button type="button" class="play-btn small" id="btn-howto-go">Got it!</button></div>
   </dialog>
 
-  <!-- 3. Charity & settings ------------------------------------------------ -->
-  <main id="view-campaign" class="view campaign" hidden>
+  <!-- 3. World: the restored world, chapters, charity and settings ------------ -->
+  <main id="view-world" class="view campaign world" hidden>
     <div class="campaign-head">
-      <button type="button" class="chip-btn" id="btn-back-home">&larr; Back to the world</button>
-      <h1>Charity &amp; settings</h1>
+      <button type="button" class="chip-btn" id="btn-back-home">&larr; Home</button>
+      <h1>My world</h1>
+      <nav class="world-tabs" aria-label="World sections">
+        <a href="#w-chapters">Chapters</a><a href="#w-charity">Charity</a><a href="#w-settings">Settings</a><a href="#w-history">Games</a>
+      </nav>
     </div>
+
+    <section class="world-hero card" aria-label="Your world">
+      <div class="world-hero-art" id="world-hero-art"></div>
+      <div class="world-hero-monster" id="world-monster"></div>
+      <div class="world-hero-text">
+        <div class="eyebrow">World restored</div>
+        <div class="world-pct" id="world-pct">0%</div>
+        <div class="muted small" id="world-next"></div>
+        <div class="diet-line" id="world-diet"></div>
+      </div>
+    </section>
+
+    <section class="card" id="w-chapters">
+      <h2>Chapters</h2>
+      <ol class="chapter-cards" id="world-chapters"></ol>
+    </section>
+
+    <section class="card" id="w-charity">
+      <h2>Charity</h2>
+      <div class="impact-grid world-impact">
+        <div><div class="impact-num" id="w-smiles">0</div><div class="impact-label">qualifying smiles</div></div>
+        <div><div class="impact-num" id="w-total">$0.00</div><div class="impact-label">pledged by sponsors</div></div>
+        <div><div class="impact-num ok" id="w-confirmed">$0.00</div><div class="impact-label">confirmed donated</div></div>
+      </div>
+      <p class="muted small">Pledged means promised. Sponsors donate to the charity themselves; Smile Monster never takes payment.</p>
+    </section>
 
     <section class="card">
       <h2>Sponsors &amp; their snacks</h2>
@@ -140,8 +167,8 @@
       </div>
     </section>
 
-    <section class="card">
-      <h2>Campaign</h2>
+    <section class="card" id="w-settings">
+      <h2>Settings</h2>
       <div class="grid2">
         <label class="field">
           <span>Charity / cause</span>
@@ -168,6 +195,10 @@
             <input type="checkbox" id="f-pulse">
             <span>Show live pulse (needs a cardio-enabled API key; just for fun)</span>
           </label>
+          <label class="check inline">
+            <input type="checkbox" id="f-diag">
+            <span>Show the signal check during games (for judges and developers: which SmartSpectra signals are arriving)</span>
+          </label>
         </div>
       </div>
     </section>
@@ -184,7 +215,7 @@
       <p class="muted small">All music and sounds are made live in the app. Nothing is downloaded.</p>
     </section>
 
-    <section class="card">
+    <section class="card" id="w-history">
       <h2>Story &amp; games</h2>
       <ol class="history" id="history"></ol>
       <p class="muted small" id="history-empty">No games yet. Your monster is waiting.</p>
@@ -219,15 +250,9 @@
         <div class="reel-from" id="reel-from" hidden></div>
         <div class="reel-text" id="reel-text">Loading something nice...</div>
         <div class="reel-why" id="reel-why"></div>
-        <video id="clip" class="clip" controls hidden></video>
         <div class="reel-actions">
-          <button type="button" id="btn-next-card">Next</button>
-          <label class="file-btn">
-            <input type="file" id="clip-file" accept="video/*">
-            <span>Play my own clip</span>
-          </label>
+          <button type="button" id="btn-next-card">Next joke</button>
         </div>
-        <div class="taste small" id="s-taste"></div>
       </div>
 
       <div class="monster-card" id="monster-card">
@@ -249,9 +274,11 @@
             <span id="meter-value">0%</span>
           </div>
           <div class="meter"><div class="meter-fill" id="meter-fill"></div><div class="meter-mark" id="meter-mark"></div></div>
-          <div class="signals-head">Signal check <em>(what the SmartSpectra SDK is sending)</em></div>
-          <div class="signals" id="signal-chips" aria-label="Live SmartSpectra signals"></div>
-          <div class="small" id="s-blinks"></div>
+          <div class="diag" id="diag" hidden>
+            <div class="signals-head">Signal check <em>(what the SmartSpectra SDK is sending)</em></div>
+            <div class="signals" id="signal-chips" aria-label="Live SmartSpectra signals"></div>
+            <div class="small" id="s-blinks"></div>
+          </div>
           <div class="pulse" id="pulse-row" hidden>Live pulse <strong id="pulse-value">--</strong> BPM <em>(for fun only)</em></div>
         </div>
         <div class="error" id="error" hidden></div>
@@ -260,27 +287,39 @@
     </section>
   </main>
 
-  <!-- 5. Summary ----------------------------------------------------------- -->
+  <!-- 5. Growth: what this game did for the monster ------------------------ -->
   <main id="view-summary" class="view summary" hidden>
     <div class="world-bg" id="sum-world"></div>
     <section class="card summary-card">
-      <div class="monster-wrap big idle" id="summary-monster"></div>
+      <h1 class="growth-title" id="sum-title">Great game!</h1>
+      <div class="growth-row">
+        <div class="growth-before" id="sum-before" hidden></div>
+        <div class="growth-arrow" id="sum-arrow" hidden aria-hidden="true">&#10140;</div>
+        <div class="monster-wrap big idle" id="summary-monster"></div>
+      </div>
       <div class="level-pill" id="sum-level">Lv 1</div>
       <div class="chapter-line" id="sum-stage">Chapter 1</div>
-      <h1 class="monster-name" id="sum-name">Little Mochi</h1>
+      <h2 class="monster-name" id="sum-name">Little Mochi</h2>
       <p class="evolved" id="sum-evolved" hidden></p>
+      <div class="growth-stats">
+        <div><div class="impact-num" id="sum-xp-gain">+0</div><div class="impact-label">XP</div></div>
+        <div><div class="impact-num" id="sum-smiles-big">0</div><div class="impact-label">smiles</div></div>
+        <div><div class="impact-num" id="sum-pledge-big">$0.00</div><div class="impact-label">pledged</div></div>
+      </div>
       <p class="xp-earned" id="sum-xp"></p>
-      <h2><span id="sum-smiles">0</span> <span id="sum-unit">smiles</span>, <span id="sum-money">$0.00</span> pledged for <span id="sum-cause">a good cause</span></h2>
-      <p class="muted small">Pledged means promised. It becomes a donation when your sponsors give to the charity, and you can mark it as donated in Charity &amp; settings.</p>
+      <p class="for-cause">Pledged for <strong id="sum-cause">a good cause</strong><span hidden><span id="sum-smiles">0</span><span id="sum-unit">smiles</span><span id="sum-money">$0.00</span></span></p>
+      <p class="muted small">Pledged means promised. It becomes a donation when your sponsors give to the charity, and you can mark it as donated in My world.</p>
       <ul class="sum-sponsors" id="sum-sponsors"></ul>
       <p class="extras" id="sum-extras"></p>
       <p class="persona" id="sum-persona"></p>
       <img id="receipt-preview" class="receipt-preview" alt="Your Smile Receipt" hidden>
       <p class="muted small">Camera is off. Only totals were saved on this device.</p>
       <div class="actions">
-        <button type="button" id="btn-discard">Don't save this game</button>
+        <button type="button" class="play-btn small" id="btn-done">Continue</button>
+      </div>
+      <div class="actions growth-more">
         <button type="button" class="ghost" id="btn-receipt">Save Smile Receipt</button>
-        <button type="button" class="play-btn small" id="btn-done">Back to the world</button>
+        <button type="button" class="link" id="btn-discard">Don't save this game</button>
       </div>
     </section>
   </main>
